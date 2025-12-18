@@ -2,134 +2,142 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Rubik's Neon - Stable Build</title>
+    <title>Rubik's Neon - Ultra Stable</title>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <style>
         :root { --neon: #00ff00; --bg: #000; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--neon); font-family: 'Courier New', monospace; overflow: hidden; }
 
-        /* SURVEY */
+        /* SURVEY SYSTEM */
         #survey-layer { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .survey-page { display: none; text-align: center; border: 3px solid var(--neon); padding: 40px; background: #001100; }
+        .survey-page { display: none; text-align: center; border: 2px solid var(--neon); padding: 40px; background: #001100; box-shadow: 0 0 20px rgba(0,255,0,0.3); }
         .active { display: block; }
         
         .pop-btn {
             background: black; border: 2px solid var(--neon); color: var(--neon); padding: 12px 25px;
-            font-size: 1rem; cursor: pointer; margin: 10px; transition: 0.2s; font-weight: bold;
+            font-size: 1rem; cursor: pointer; margin: 10px; transition: 0.2s; font-weight: bold; text-transform: uppercase;
         }
-        .pop-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 20px var(--neon); }
+        .pop-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); transform: scale(1.05); }
 
         /* MAIN APP */
-        #main-interface { display: none; width: 100vw; height: 100vh; grid-template-columns: 300px 1fr; }
-        #sidebar { background: rgba(0, 10, 0, 0.9); border-right: 2px solid var(--neon); padding: 20px; z-index: 10; overflow-y: auto; }
-        #cube-viewport { position: relative; width: 100%; height: 100%; background: #000; outline: none; }
+        #main-interface { display: none; width: 100vw; height: 100vh; grid-template-columns: 320px 1fr; }
+        #sidebar { background: rgba(0, 5, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; }
+        #cube-viewport { position: relative; width: 100%; height: 100%; background: #000; }
 
-        .control-panel { border: 1px solid var(--neon); padding: 15px; margin-top: 20px; font-size: 0.85rem; line-height: 1.5; background: rgba(0,255,0,0.05); }
-        kbd { background: #333; border: 1px solid var(--neon); padding: 2px 5px; color: #fff; border-radius: 3px; font-family: sans-serif; }
+        .kb-box { border: 1px solid #004400; padding: 15px; margin: 20px 0; font-size: 0.85rem; line-height: 1.8; background: #000a00; }
+        kbd { background: #111; border: 1px solid var(--neon); padding: 2px 6px; color: #fff; border-radius: 3px; font-family: sans-serif; }
     </style>
 </head>
 <body>
 
     <div id="survey-layer">
         <div id="p1" class="survey-page active">
-            <h1>SYSTEM INITIALIZE</h1>
-            <button class="pop-btn" onclick="nextPage('p2')">BEGINNER</button>
-            <button class="pop-btn" onclick="nextPage('p2')">ADVANCED</button>
+            <h1>[ INITIALIZING SCAN ]</h1>
+            <button class="pop-btn" onclick="next('p2')">I am a beginner</button>
+            <button class="pop-btn" onclick="next('p2')">I am advanced</button>
         </div>
         <div id="p2" class="survey-page">
-            <h1>CHOOSE PROTOCOL</h1>
-            <button class="pop-btn" onclick="launchApp()">LEARN SOLVING</button>
-            <button class="pop-btn" onclick="launchApp()">AUTO SOLVE</button>
+            <h1>[ PROTOCOL ]</h1>
+            <button class="pop-btn" onclick="launch()">Start Learning</button>
+            <button class="pop-btn" onclick="launch()">Interactive Solver</button>
         </div>
     </div>
 
     <div id="main-interface">
         <div id="sidebar">
-            <h2 style="border-bottom: 2px solid var(--neon);">CUBE TERMINAL</h2>
-            <div class="control-panel">
-                <b>MANUAL INPUT:</b><br>
+            <h2 style="border-bottom: 2px solid var(--neon); padding-bottom: 10px;">TERMINAL</h2>
+            <div class="kb-box">
+                <b>MANIPULATION:</b><br>
                 <kbd>U</kbd> Top | <kbd>D</kbd> Bottom<br>
                 <kbd>L</kbd> Left | <kbd>R</kbd> Right<br>
                 <kbd>F</kbd> Front | <kbd>B</kbd> Back<br>
-                <hr style="border:0; border-top:1px solid var(--neon); margin:10px 0;">
-                <b>CAMERA:</b><br>
-                Left-Click + Drag on Cube
+                <small>(Shift for Reverse)</small>
             </div>
-            <button class="pop-btn" style="width:100%; margin-top:20px;" onclick="scramble()">SCRAMBLE</button>
-            <button class="pop-btn" style="width:100%; font-size:0.7rem;" onclick="location.reload()">REBOOT SYSTEM</button>
+            <button class="pop-btn" onclick="scramble()">SCRAMBLE DATA</button>
+            <button class="pop-btn" style="font-size: 0.7rem; margin-top: auto;" onclick="location.reload()">REBOOT</button>
         </div>
         <div id="cube-viewport"></div>
     </div>
 
     <script>
-        let scene, camera, renderer, cubeGroup, isRotating = false;
+        let scene, camera, renderer, cubeGroup, isMoving = false;
         const cubies = [];
 
-        function nextPage(id) {
+        function next(id) {
             document.querySelectorAll('.survey-page').forEach(p => p.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
 
-        function launchApp() {
+        function launch() {
             document.getElementById('survey-layer').style.display = 'none';
             document.getElementById('main-interface').style.display = 'grid';
-            init3D();
+            initApp();
         }
 
-        function init3D() {
+        function initApp() {
             const container = document.getElementById('cube-viewport');
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(6, 6, 6);
+            camera.position.set(5, 5, 5);
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-            const light = new THREE.DirectionalLight(0xffffff, 0.5);
-            light.position.set(10, 10, 10);
-            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const sun = new THREE.DirectionalLight(0xffffff, 0.4);
+            sun.position.set(10, 20, 10);
+            scene.add(sun);
 
             cubeGroup = new THREE.Group();
             scene.add(cubeGroup);
 
             // 
-            const faceColors = [0xff0000, 0xffa500, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff]; // R, L, U, D, F, B
+            // Standard Cube Colors: Red, Orange, White, Yellow, Green, Blue
+            const faceColors = [0xff0000, 0xff8800, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
 
             for (let x = -1; x <= 1; x++) {
                 for (let y = -1; y <= 1; y++) {
                     for (let z = -1; z <= 1; z++) {
                         const mats = faceColors.map(c => new THREE.MeshLambertMaterial({ color: c }));
-                        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), mats);
-                        mesh.position.set(x, y, z);
+                        const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), mats);
                         
-                        const edges = new THREE.EdgesGeometry(mesh.geometry);
-                        mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00 })));
+                        cubie.position.set(x, y, z);
+                        
+                        // Neon Grid lines
+                        const edges = new THREE.EdgesGeometry(cubie.geometry);
+                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 }));
+                        cubie.add(line);
 
-                        cubies.push(mesh);
-                        cubeGroup.add(mesh);
+                        cubies.push(cubie);
+                        cubeGroup.add(cubie);
                     }
                 }
             }
 
-            let isDragging = false;
-            container.addEventListener('mousedown', () => isDragging = true);
-            window.addEventListener('mouseup', () => isDragging = false);
+            // Mouse Interaction for Viewport Rotation
+            let drag = false;
+            container.addEventListener('mousedown', () => drag = true);
+            window.addEventListener('mouseup', () => drag = false);
             window.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    cubeGroup.rotation.y += e.movementX * 0.01;
-                    cubeGroup.rotation.x += e.movementY * 0.01;
+                if (drag) {
+                    cubeGroup.rotation.y += e.movementX * 0.008;
+                    cubeGroup.rotation.x += e.movementY * 0.008;
                 }
             });
 
+            // Keyboard Control
             window.addEventListener('keydown', (e) => {
-                if (isRotating) return;
+                if (isMoving) return;
                 const key = e.key.toUpperCase();
-                const moveMap = { 'R':['x',1], 'L':['x',-1], 'U':['y',1], 'D':['y',-1], 'F':['z',1], 'B':['z',-1] };
-                if (moveMap[key]) doMove(moveMap[key][0], moveMap[key][1], e.shiftKey);
+                const moves = { 
+                    'R': ['x', 1], 'L': ['x', -1], 
+                    'U': ['y', 1], 'D': ['y', -1], 
+                    'F': ['z', 1], 'B': ['z', -1] 
+                };
+                if (moves[key]) executeMove(moves[key][0], moves[key][1], e.shiftKey);
             });
 
             function animate() {
@@ -139,56 +147,57 @@
             animate();
         }
 
-        function doMove(axis, layer, reverse) {
-            isRotating = true;
+        function executeMove(axis, layer, prime) {
+            isMoving = true;
             const pivot = new THREE.Group();
             scene.add(pivot);
 
-            // SELECT PIECES BASED ON CURRENT WORLD POSITION
-            const selection = [];
+            // Selection based on current world position to avoid drift
+            const movingSet = [];
+            const worldPos = new THREE.Vector3();
+
             cubies.forEach(c => {
-                const worldPos = new THREE.Vector3();
                 c.getWorldPosition(worldPos);
                 if (Math.round(worldPos[axis]) === layer) {
-                    selection.push(c);
+                    movingSet.push(c);
                 }
             });
 
-            selection.forEach(c => pivot.attach(c));
+            movingSet.forEach(c => pivot.attach(c));
 
-            const angle = reverse ? Math.PI / 2 : -Math.PI / 2;
-            
+            const targetRot = prime ? Math.PI / 2 : -Math.PI / 2;
+
             gsap.to(pivot.rotation, {
-                [axis]: angle,
-                duration: 0.35,
+                [axis]: targetRot,
+                duration: 0.3,
                 ease: "power2.inOut",
                 onComplete: () => {
-                    selection.forEach(c => {
+                    movingSet.forEach(c => {
                         cubeGroup.attach(c);
-                        // CRITICAL FIX: Round position and rotation to nearest integers to prevent diagonal glitching
+                        
+                        // SNAPPING LOGIC: The "Anti-Glitch" secret
+                        // Resetting local positions and rotations to perfect integers
                         c.position.x = Math.round(c.position.x);
                         c.position.y = Math.round(c.position.y);
                         c.position.z = Math.round(c.position.z);
                         
-                        // Fix Rotation Drift
                         c.rotation.x = Math.round(c.rotation.x / (Math.PI/2)) * (Math.PI/2);
                         c.rotation.y = Math.round(c.rotation.y / (Math.PI/2)) * (Math.PI/2);
                         c.rotation.z = Math.round(c.rotation.z / (Math.PI/2)) * (Math.PI/2);
                     });
                     scene.remove(pivot);
-                    isRotating = false;
+                    isMoving = false;
                 }
             });
         }
 
         function scramble() {
-            const moves = ['R','L','U','D','F','B'];
+            const keys = ['R', 'L', 'U', 'D', 'F', 'B'];
             let count = 0;
-            const interval = setInterval(() => {
-                doMove(moves[Math.floor(Math.random()*6)].toLowerCase() === moves[Math.floor(Math.random()*6)] ? 'x' : 'y', 1, false);
-                count++;
-                if (count > 15) clearInterval(interval);
-            }, 450);
+            const scrambler = setInterval(() => {
+                executeMove(keys[Math.floor(Math.random()*6)].toLowerCase() == 'u' || keys[Math.floor(Math.random()*6)].toLowerCase() == 'd' ? 'y' : 'x', 1, false);
+                if (++count > 12) clearInterval(scrambler);
+            }, 350);
         }
 
         window.addEventListener('resize', () => {
