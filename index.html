@@ -18,16 +18,17 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 
 #main-app { display: none; width: 100vw; height: 100vh; grid-template-columns: 320px 1fr; }
 #sidebar { background: rgba(0, 10, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; box-sizing: border-box; }
-#cube-container { position: relative; width: 100%; height: 100%; touch-action: none; }
+#cube-container { position: relative; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+
+#cube-container:active { cursor: grabbing; }
 
 .lesson-box { background: #002200; border: 1px solid var(--neon); padding: 15px; margin-top: 20px; font-size: 0.85rem; }
 .warning-red { color: #ff3333; font-weight: bold; border: 1px solid #ff3333; padding: 5px; margin: 10px 0; }
 
-/* 3 AXES ABOVE/BELOW CUBE */
-.axis-controls-top { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
-.axis-controls-bottom { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
-.axis-btn { width: 50px; height: 50px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-.axis-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
+/* 3 AXES BUTTONS */
+.axis-controls { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+.axis-btn { width: 60px; height: 60px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.4rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.axis-btn:hover:not(.disabled) { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
 .axis-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 </style>
 </head>
@@ -61,25 +62,32 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 <h2 id="method-title">SYSTEM</h2>
 <div class="lesson-box">
 <h3>Lesson 1: Notations</h3>
-<p>Click <b>X/Y/Z buttons</b> (3x max) = Rotate View</p>
-<p>Click <b>cube faces</b> = Twist layers</p>
+<p><b>R F U</b> = Clockwise | <b>R' F' U'</b> = Counter-clockwise</p>
+<p>Drag cube = <b>Rotate View</b> (3x max)</p>
 </div>
 <button class="pop-btn" style="margin-top:auto" onclick="scramble()">SCRAMBLE</button>
 <button class="pop-btn" style="font-size:0.7rem" onclick="playDemo()">DEMO: R MOVE</button>
-<button class="pop-btn" style="font-size:0.7rem; margin-top:10px" onclick="resetView()">RESET VIEW</button>
+<button class="pop-btn" style="font-size:0.7rem" onclick="resetView()">RESET VIEW</button>
 </div>
 <div id="cube-container">
-<div id="axis-top" class="axis-controls-top"></div>
-<div id="axis-bottom" class="axis-controls-bottom"></div>
+<div class="axis-controls">
+<button class="axis-btn" onclick="doMove('x', false)">R</button>
+<button class="axis-btn" onclick="doMove('x', true)">R'</button>
+<button class="axis-btn" onclick="doMove('z', false)">F</button>
+<button class="axis-btn" onclick="doMove('z', true)">F'</button>
+<button class="axis-btn" onclick="doMove('y', false)">U</button>
+<button class="axis-btn" onclick="doMove('y', true)">U'</button>
+</div>
 </div>
 </div>
 
 <script>
-let scene, camera, renderer, raycaster, mouse = new THREE.Vector2();
+let scene, camera, renderer;
 let cubies = [], cubeGroup = new THREE.Group();
 let isRotating = false;
 let viewMoves = 0;
 const MAX_MOVES = 3;
+let isDragging = false, dragStart = new THREE.Vector2();
 
 function goPage(id) {
 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -103,7 +111,6 @@ renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 container.appendChild(renderer.domElement);
 
-raycaster = new THREE.Raycaster();
 scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 scene.add(new THREE.DirectionalLight(0xffffff, 0.5));
 scene.add(cubeGroup);
@@ -123,79 +130,51 @@ cubeGroup.add(cubie);
 }
 }
 
-setupAxisControls();
-container.addEventListener('pointerdown', e => {
-mouse.x = (e.offsetX / container.clientWidth) * 2 - 1;
-mouse.y = -(e.offsetY / container.clientHeight) * 2 + 1;
-raycaster.setFromCamera(mouse, camera);
-const intersects = raycaster.intersectObjects(cubies);
-if (intersects.length > 0) {
-const axis = getFaceAxis(intersects[0].face.normal);
-const prime = getFaceDirection(intersects[0].face.normal);
+setupMouseControls(container);
+animate();
+}
+
+function setupMouseControls(container) {
+container.addEventListener('pointerdown', (e) => {
+isDragging = true;
+dragStart.set(e.clientX, e.clientY);
+});
+
+container.addEventListener('pointermove', (e) => {
+if (!isDragging || viewMoves >= MAX_MOVES) return;
+const deltaX = (e.clientX - dragStart.x) * 0.005;
+const deltaY = (e.clientY - dragStart.y) * 0.005;
+cubeGroup.rotation.y += deltaX;
+cubeGroup.rotation.x += deltaY;
+dragStart.set(e.clientX, e.clientY);
+viewMoves = Math.min(MAX_MOVES, viewMoves + 1);
+updateButtons();
+});
+
+container.addEventListener('pointerup', () => {
+isDragging = false;
+});
+}
+
+function doMove(axis, prime) {
+if (isRotating) return;
 handleMove(axis, prime);
-}
-});
-}
-
-function setupAxisControls() {
-const top = document.getElementById('axis-top');
-const bottom = document.getElementById('axis-bottom');
-top.innerHTML = '<button class="axis-btn" onclick="rotateAxis(\'x\')">X</button><button class="axis-btn" onclick="rotateAxis(\'y\')">Y</button>';
-bottom.innerHTML = '<button class="axis-btn" onclick="rotateAxis(\'z\')">Z</button>';
-}
-
-function rotateAxis(axis) {
-if (viewMoves >= MAX_MOVES) return;
-viewMoves++;
-updateAxisButtons();
-const angle = Math.PI / 2;
-if (axis === 'x') cubeGroup.rotation.x += angle;
-else if (axis === 'y') cubeGroup.rotation.y += angle;
-else cubeGroup.rotation.z += angle;
-}
-
-function updateAxisButtons() {
-const buttons = document.querySelectorAll('.axis-btn');
-buttons.forEach(btn => {
-if (viewMoves >= MAX_MOVES) btn.classList.add('disabled');
-else btn.classList.remove('disabled');
-});
-}
-
-function resetView() {
-cubeGroup.rotation.set(0, 0, 0);
-viewMoves = 0;
-updateAxisButtons();
-}
-
-function getFaceAxis(normal) {
-if (Math.abs(normal.x) > 0.5) return 'x';
-if (Math.abs(normal.y) > 0.5) return 'y';
-return 'z';
-}
-
-function getFaceDirection(normal) {
-const threshold = 0.5;
-if (normal.x > threshold) return false;
-if (normal.x < -threshold) return true;
-if (normal.y > threshold) return false;
-if (normal.y < -threshold) return true;
-if (normal.z > threshold) return false;
-if (normal.z < -threshold) return true;
-return false;
 }
 
 function handleMove(axis, prime) {
-if (isRotating) return;
 isRotating = true;
 const layer = 1;
 const pivot = new THREE.Group();
 scene.add(pivot);
+
 const moving = cubies.filter(c => {
-const p = c.getWorldPosition(new THREE.Vector3());
+const p = new THREE.Vector3();
+c.getWorldPosition(p);
 return Math.round(p[axis]) === layer;
 });
+
 moving.forEach(c => pivot.attach(c));
+
 gsap.to(pivot.rotation, {
 [axis]: prime ? Math.PI/2 : -Math.PI/2,
 duration: 0.4,
@@ -212,21 +191,33 @@ isRotating = false;
 });
 }
 
+function updateButtons() {
+const buttons = document.querySelectorAll('.axis-btn');
+if (viewMoves >= MAX_MOVES) {
+buttons.forEach(btn => btn.classList.add('disabled'));
+} else {
+buttons.forEach(btn => btn.classList.remove('disabled'));
+}
+}
+
+function resetView() {
+gsap.to(cubeGroup.rotation, {x: 0, y: 0, z: 0, duration: 0.5});
+viewMoves = 0;
+updateButtons();
+}
+
 function animate() { 
 requestAnimationFrame(animate); 
 camera.lookAt(0,0,0);
 renderer.render(scene, camera); 
 }
-animate();
 
-function playDemo() { handleMove('x', false); }
+function playDemo() { doMove('x', false); }
 function scramble() {
 let i = 0;
 const t = setInterval(() => {
 const axes = ['x','y','z'];
-const axis = axes[Math.floor(Math.random()*3)];
-const prime = Math.random() > 0.5;
-handleMove(axis, prime);
+doMove(axes[Math.floor(Math.random()*3)], Math.random() > 0.5);
 if (i++ > 12) clearInterval(t);
 }, 350);
 }
