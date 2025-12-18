@@ -14,22 +14,20 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 .page { display: none; text-align: center; border: 2px solid var(--neon); padding: 40px; background: #001100; max-width: 500px; box-shadow: 0 0 30px rgba(0,255,0,0.3); }
 .active { display: block; }
 .pop-btn { background: black; border: 2px solid var(--neon); color: var(--neon); padding: 12px 25px; font-size: 1rem; cursor: pointer; margin: 10px; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
-.pop-btn:hover { background: var(--neon); color: black; }
+.pop-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
 
-#main-app { display: none; width: 100vw; height: 100vh; grid-template-columns: 320px 1fr; }
-#sidebar { background: rgba(0, 10, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; box-sizing: border-box; }
+#main-app { display: none; width: 100vw; height: 100vh; display: grid; grid-template-columns: 320px 1fr; }
+#sidebar { background: rgba(0, 10, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; display: flex; flex-direction: column; box-sizing: border-box; }
 #cube-container { position: relative; width: 100%; height: 100%; touch-action: none; cursor: grab; }
-
 #cube-container:active { cursor: grabbing; }
 
 .lesson-box { background: #002200; border: 1px solid var(--neon); padding: 15px; margin-top: 20px; font-size: 0.85rem; }
 .warning-red { color: #ff3333; font-weight: bold; border: 1px solid #ff3333; padding: 5px; margin: 10px 0; }
 
-/* 3 AXES BUTTONS */
-.axis-controls { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
-.axis-btn { width: 60px; height: 60px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.4rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.axis-controls { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.axis-btn { width: 55px; height: 55px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
 .axis-btn:hover:not(.disabled) { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
-.axis-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+.axis-btn.disabled { opacity: 0.4; cursor: not-allowed; border-color: #666; }
 </style>
 </head>
 <body>
@@ -62,12 +60,12 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 <h2 id="method-title">SYSTEM</h2>
 <div class="lesson-box">
 <h3>Lesson 1: Notations</h3>
-<p><b>R F U</b> = Clockwise | <b>R' F' U'</b> = Counter-clockwise</p>
-<p>Drag cube = <b>Rotate View</b> (3x max)</p>
+<p><b>R/R' F/F' U/U'</b> = Twist layers</p>
+<p><b>Drag cube</b> = Rotate view (3x max)</p>
 </div>
 <button class="pop-btn" style="margin-top:auto" onclick="scramble()">SCRAMBLE</button>
-<button class="pop-btn" style="font-size:0.7rem" onclick="playDemo()">DEMO: R MOVE</button>
-<button class="pop-btn" style="font-size:0.7rem" onclick="resetView()">RESET VIEW</button>
+<button class="pop-btn" style="font-size:0.8rem" onclick="playDemo()">DEMO: R</button>
+<button class="pop-btn" style="font-size:0.8rem" onclick="resetView()">RESET VIEW</button>
 </div>
 <div id="cube-container">
 <div class="axis-controls">
@@ -82,144 +80,184 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 </div>
 
 <script>
-let scene, camera, renderer;
+let scene, camera, renderer, raycaster, mouse = new THREE.Vector2();
 let cubies = [], cubeGroup = new THREE.Group();
 let isRotating = false;
+let isDragging = false;
+let dragStart = new THREE.Vector2();
 let viewMoves = 0;
 const MAX_MOVES = 3;
-let isDragging = false, dragStart = new THREE.Vector2();
 
 function goPage(id) {
-document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
 function initApp(method) {
-document.getElementById('overlay').style.display = 'none';
-document.getElementById('main-app').style.display = 'grid';
-document.getElementById('method-title').innerText = method + " HUB";
-setup3D();
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('main-app').style.display = 'grid';
+  document.getElementById('method-title').innerText = method + " HUB";
+  setup3D();
 }
 
 function setup3D() {
-const container = document.getElementById('cube-container');
-scene = new THREE.Scene();
-camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-camera.position.set(6, 6, 6);
-
-renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(container.clientWidth, container.clientHeight);
-container.appendChild(renderer.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-scene.add(new THREE.DirectionalLight(0xffffff, 0.5));
-scene.add(cubeGroup);
-
-const colors = [0xff0000, 0xffa500, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
-for (let x = -1; x <= 1; x++) {
-for (let y = -1; y <= 1; y++) {
-for (let z = -1; z <= 1; z++) {
-if (x === 0 && y === 0 && z === 0) continue;
-const mats = colors.map(c => new THREE.MeshLambertMaterial({ color: c }));
-const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.94, 0.94), mats);
-cubie.position.set(x, y, z);
-cubie.add(new THREE.LineSegments(new THREE.EdgesGeometry(cubie.geometry), new THREE.LineBasicMaterial({color: 0x00ff00})));
-cubies.push(cubie);
-cubeGroup.add(cubie);
+  const container = document.getElementById('cube-container');
+  
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(6, 6, 6);
+  
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+  
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  scene.add(new THREE.DirectionalLight(0xffffff, 0.4));
+  scene.add(cubeGroup);
+  
+  // Create cubies
+  const colors = [0xff0000, 0xffa500, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      for (let z = -1; z <= 1; z++) {
+        if (x === 0 && y === 0 && z === 0) continue;
+        const materials = colors.map(c => new THREE.MeshLambertMaterial({ color: c }));
+        const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.95), materials);
+        cubie.position.set(x, y, z);
+        cubie.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(cubie.geometry), 
+          new THREE.LineBasicMaterial({color: 0x00ff00})
+        ));
+        cubies.push(cubie);
+        cubeGroup.add(cubie);
+      }
+    }
+  }
+  
+  setupControls(container);
+  animate();
 }
-}
-}
 
-setupMouseControls(container);
-animate();
-}
-
-function setupMouseControls(container) {
-container.addEventListener('pointerdown', (e) => {
-isDragging = true;
-dragStart.set(e.clientX, e.clientY);
-});
-
-container.addEventListener('pointermove', (e) => {
-if (!isDragging || viewMoves >= MAX_MOVES) return;
-const deltaX = (e.clientX - dragStart.x) * 0.005;
-const deltaY = (e.clientY - dragStart.y) * 0.005;
-cubeGroup.rotation.y += deltaX;
-cubeGroup.rotation.x += deltaY;
-dragStart.set(e.clientX, e.clientY);
-viewMoves = Math.min(MAX_MOVES, viewMoves + 1);
-updateButtons();
-});
-
-container.addEventListener('pointerup', () => {
-isDragging = false;
-});
+function setupControls(container) {
+  // Mouse drag for view rotation
+  container.addEventListener('pointerdown', (e) => {
+    if (viewMoves >= MAX_MOVES) return;
+    isDragging = true;
+    dragStart.set(e.clientX, e.clientY);
+  });
+  
+  container.addEventListener('pointermove', (e) => {
+    if (!isDragging || viewMoves >= MAX_MOVES) return;
+    const deltaX = (e.clientX - dragStart.x) * 0.01;
+    const deltaY = (e.clientY - dragStart.y) * 0.01;
+    cubeGroup.rotation.y += deltaX;
+    cubeGroup.rotation.x += deltaY;
+    dragStart.set(e.clientX, e.clientY);
+    if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
+      viewMoves = Math.min(MAX_MOVES, viewMoves + 1);
+      updateButtons();
+    }
+  });
+  
+  container.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+  
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
 }
 
 function doMove(axis, prime) {
-if (isRotating) return;
-handleMove(axis, prime);
+  if (isRotating) return;
+  handleMove(axis, prime);
 }
 
 function handleMove(axis, prime) {
-isRotating = true;
-const layer = 1;
-const pivot = new THREE.Group();
-scene.add(pivot);
-
-const moving = cubies.filter(c => {
-const p = new THREE.Vector3();
-c.getWorldPosition(p);
-return Math.round(p[axis]) === layer;
-});
-
-moving.forEach(c => pivot.attach(c));
-
-gsap.to(pivot.rotation, {
-[axis]: prime ? Math.PI/2 : -Math.PI/2,
-duration: 0.4,
-ease: "power2.inOut",
-onComplete: () => {
-moving.forEach(c => {
-cubeGroup.attach(c);
-const pos = c.position;
-c.position.set(Math.round(pos.x * 10)/10, Math.round(pos.y * 10)/10, Math.round(pos.z * 10)/10);
-});
-scene.remove(pivot);
-isRotating = false;
-}
-});
+  isRotating = true;
+  
+  const layer = 1;
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+  
+  const movingCubies = [];
+  cubies.forEach(cubie => {
+    const worldPos = new THREE.Vector3();
+    cubie.getWorldPosition(worldPos);
+    if (Math.round(worldPos[axis]) === layer) {
+      pivot.attach(cubie);
+      movingCubies.push(cubie);
+    }
+  });
+  
+  gsap.to(pivot.rotation, {
+    [axis]: prime ? Math.PI/2 : -Math.PI/2,
+    duration: 0.5,
+    ease: "power2.inOut",
+    onComplete: () => {
+      movingCubies.forEach(cubie => {
+        cubeGroup.attach(cubie);
+        const pos = cubie.position;
+        cubie.position.set(
+          Math.round(pos.x * 10) / 10,
+          Math.round(pos.y * 10) / 10,
+          Math.round(pos.z * 10) / 10
+        );
+      });
+      scene.remove(pivot);
+      isRotating = false;
+    }
+  });
 }
 
 function updateButtons() {
-const buttons = document.querySelectorAll('.axis-btn');
-if (viewMoves >= MAX_MOVES) {
-buttons.forEach(btn => btn.classList.add('disabled'));
-} else {
-buttons.forEach(btn => btn.classList.remove('disabled'));
-}
+  const buttons = document.querySelectorAll('.axis-btn');
+  buttons.forEach(btn => {
+    if (viewMoves >= MAX_MOVES) {
+      btn.classList.add('disabled');
+    } else {
+      btn.classList.remove('disabled');
+    }
+  });
 }
 
 function resetView() {
-gsap.to(cubeGroup.rotation, {x: 0, y: 0, z: 0, duration: 0.5});
-viewMoves = 0;
-updateButtons();
+  gsap.to(cubeGroup.rotation, {
+    x: 0, y: 0, z: 0,
+    duration: 0.8,
+    ease: "power2.inOut",
+    onComplete: () => {
+      viewMoves = 0;
+      updateButtons();
+    }
+  });
 }
 
-function animate() { 
-requestAnimationFrame(animate); 
-camera.lookAt(0,0,0);
-renderer.render(scene, camera); 
+function animate() {
+  requestAnimationFrame(animate);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
 }
 
-function playDemo() { doMove('x', false); }
+function playDemo() {
+  doMove('x', false);
+}
+
 function scramble() {
-let i = 0;
-const t = setInterval(() => {
-const axes = ['x','y','z'];
-doMove(axes[Math.floor(Math.random()*3)], Math.random() > 0.5);
-if (i++ > 12) clearInterval(t);
-}, 350);
+  let moves = 0;
+  const interval = setInterval(() => {
+    if (isRotating || moves > 15) {
+      clearInterval(interval);
+      return;
+    }
+    const axes = ['x', 'y', 'z'];
+    const axis = axes[Math.floor(Math.random() * 3)];
+    const prime = Math.random() > 0.5;
+    doMove(axis, prime);
+    moves++;
+  }, 400);
 }
 </script>
 </body>
