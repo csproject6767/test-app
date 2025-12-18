@@ -3,193 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Green-Black Rubik's Trainer</title>
+    <title>Green-Black Cube Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            background-color: black;
-            color: #00FF00;
-            font-family: 'Courier New', Courier, monospace;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+        body { margin: 0; background-color: #000; color: #0f0; font-family: 'Segoe UI', monospace; overflow: hidden; }
+        
+        /* UI Screens */
+        #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 100; background: black; }
+        .page { display: none; text-align: center; }
+        .active { display: flex; flex-direction: column; gap: 20px; }
 
-        #ui-container {
-            text-align: center;
-            z-index: 10;
-        }
-
-        .page {
-            display: none;
-        }
-
-        .active {
-            display: block;
-        }
-
-        h1 {
-            font-size: 2rem;
-            text-shadow: 0 0 10px #00FF00;
-            margin-bottom: 50px;
-        }
-
+        /* Popping Buttons */
         button {
-            display: block;
-            width: 300px;
-            padding: 15px;
-            margin: 10px auto;
-            background: black;
-            color: #00FF00;
-            border: 2px solid #00FF00;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.2s, background 0.2s;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            outline: none;
+            padding: 15px 40px; background: #000; color: #0f0; border: 3px solid #0f0;
+            font-weight: bold; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px;
         }
+        button:hover { transform: scale(1.15); background: #0f0; color: #000; box-shadow: 0 0 20px #0f0; }
 
-        /* Popping Animation */
-        button:hover {
-            transform: scale(1.1);
-            background: #004400;
-            box-shadow: 0 0 15px #00FF00;
-        }
-
-        button:active {
-            transform: scale(0.95);
-        }
-
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-        }
-
-        .instruction {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            pointer-events: none;
-        }
+        /* Interactive Layout (Split Screen) */
+        #main-app { display: none; width: 100vw; height: 100vh; grid-template-columns: 1fr 1fr; }
+        #text-sidebar { padding: 40px; border-right: 2px solid #0f0; background: rgba(0,20,0,1); display: flex; flex-direction: column; justify-content: center; }
+        #canvas-container { position: relative; background: #050505; }
+        
+        h1 { text-shadow: 0 0 10px #0f0; margin-bottom: 30px; }
+        p { line-height: 1.6; font-size: 1.1rem; color: #8f8; }
     </style>
 </head>
 <body>
 
-    <div id="ui-container">
+    <div id="ui-layer">
         <div id="page1" class="page active">
-            <h1>HOW MUCH DO YOU KNOW?</h1>
-            <button onclick="nextPage('page2')">COMPLETE BEGINNER</button>
-            <button onclick="nextPage('page2')">KNOW SOME MOVES</button>
-            <button onclick="nextPage('page2')">ALMOST PRO</button>
+            <h1>CUBE KNOWLEDGE SURVEY</h1>
+            <button onclick="nextPage('page2')">I'm a Beginner</button>
+            <button onclick="nextPage('page2')">I know a few moves</button>
         </div>
-
         <div id="page2" class="page">
-            <h1>WHAT IS YOUR GOAL?</h1>
-            <button onclick="start3D()">LEARN TO SOLVE</button>
-            <button onclick="start3D()">SOLVE MY CUBE</button>
+            <h1>CHOOSE YOUR PATH</h1>
+            <button onclick="launchApp('Learn')">LEARN TO SOLVE</button>
+            <button onclick="launchApp('Solver')">AUTO SOLVER MODE</button>
         </div>
     </div>
 
-    <div id="canvas-container">
-        <div class="instruction">DRAG TO ROTATE CUBE</div>
+    <div id="main-app">
+        <div id="text-sidebar">
+            <h1 id="mode-title">LEARNING MODE</h1>
+            <p id="mode-desc">Welcome to the interactive trainer. Use your mouse to rotate the cube in 3D space. 
+            <br><br>
+            <b>Instructions:</b><br>
+            • Click and drag anywhere on the right to rotate the entire cube.<br>
+            • Observe the green boundaries to understand the cube's orientation.</p>
+            <button onclick="location.reload()" style="margin-top:50px; font-size: 0.8rem; width: fit-content;">Reset App</button>
+        </div>
+        <div id="canvas-container"></div>
     </div>
 
     <script>
-        // UI Navigation
-        function nextPage(pageId) {
+        function nextPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
+            document.getElementById(id).classList.add('active');
         }
 
-        function start3D() {
-            document.getElementById('ui-container').style.display = 'none';
-            document.getElementById('canvas-container').style.display = 'block';
+        function launchApp(mode) {
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('main-app').style.display = 'grid';
+            document.getElementById('mode-title').innerText = mode + " MODE";
             init3D();
         }
 
-        // 3D Engine Logic
         function init3D() {
+            const container = document.getElementById('canvas-container');
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
-            
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
 
-            // Create Rubik's Cube Figurine
+            // Lighting (Brighter)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0x00ff00, 1);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+
+            // Create Rubik's Cube with clear boundaries
             const cubeGroup = new THREE.Group();
-            const spacing = 1.05;
+            const cubeSize = 3;
+            const gap = 0.05;
 
-            for (let x = -1; x <= 1; x++) {
-                for (let y = -1; y <= 1; y++) {
-                    for (let z = -1; z <= 1; z++) {
+            for (let x = 0; x < cubeSize; x++) {
+                for (let y = 0; y < cubeSize; y++) {
+                    for (let z = 0; z < cubeSize; z++) {
+                        // Create the cubie (Black box)
                         const geometry = new THREE.BoxGeometry(1, 1, 1);
-                        
-                        // Green edges, Black faces
-                        const materials = Array(6).fill(new THREE.MeshBasicMaterial({ 
-                            color: 0x000000, 
-                            polygonOffset: true,
-                            polygonOffsetFactor: 1,
-                            polygonOffsetUnits: 1
-                        }));
+                        const material = new THREE.MeshLambertMaterial({ color: 0x000000 });
+                        const cubie = new THREE.Mesh(geometry, material);
 
-                        const mesh = new THREE.Mesh(geometry, materials);
+                        // Create the bright green boundary (edges)
+                        const edges = new THREE.EdgesGeometry(geometry);
+                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 }));
                         
-                        // Add the Green "Wireframe" look
-                        const geo = new THREE.EdgesGeometry(geometry);
-                        const mat = new THREE.LineBasicMaterial({ color: 0x00FF00, linewidth: 2 });
-                        const wireframe = new THREE.LineSegments(geo, mat);
-                        
-                        mesh.add(wireframe);
-                        mesh.position.set(x * spacing, y * spacing, z * spacing);
-                        cubeGroup.add(mesh);
+                        cubie.add(line);
+                        cubie.position.set(x - 1, y - 1, z - 1);
+                        cubeGroup.add(cubie);
                     }
                 }
             }
-
             scene.add(cubeGroup);
-            camera.position.z = 6;
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
 
-            // Interaction Variables
+            // Movement Logic
             let isDragging = false;
             let previousMousePosition = { x: 0, y: 0 };
 
-            window.addEventListener('mousedown', () => isDragging = true);
+            container.addEventListener('mousedown', () => isDragging = true);
             window.addEventListener('mouseup', () => isDragging = false);
             window.addEventListener('mousemove', (e) => {
                 if (isDragging) {
-                    const deltaMove = {
-                        x: e.offsetX - previousMousePosition.x,
-                        y: e.offsetY - previousMousePosition.y
-                    };
-
-                    cubeGroup.rotation.y += deltaMove.x * 0.01;
-                    cubeGroup.rotation.x += deltaMove.y * 0.01;
+                    const deltaX = e.movementX;
+                    const deltaY = e.movementY;
+                    cubeGroup.rotation.y += deltaX * 0.01;
+                    cubeGroup.rotation.x += deltaY * 0.01;
                 }
-                previousMousePosition = { x: e.offsetX, y: e.offsetY };
             });
 
-            // Animation Loop
             function animate() {
                 requestAnimationFrame(animate);
                 renderer.render(scene, camera);
             }
             animate();
 
-            // Handle Resize
             window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setSize(container.clientWidth, container.clientHeight);
             });
         }
     </script>
