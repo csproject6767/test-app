@@ -10,14 +10,12 @@
 :root { --neon: #00ff00; --bg: #000; }
 body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--neon); font-family: 'Courier New', monospace; overflow: hidden; }
 
-/* MULTI-STAGE UI */
 #overlay { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; justify-content: center; align-items: center; }
 .page { display: none; text-align: center; border: 2px solid var(--neon); padding: 40px; background: #001100; max-width: 500px; box-shadow: 0 0 30px rgba(0,255,0,0.3); }
 .active { display: block; }
 .pop-btn { background: black; border: 2px solid var(--neon); color: var(--neon); padding: 12px 25px; font-size: 1rem; cursor: pointer; margin: 10px; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
 .pop-btn:hover { background: var(--neon); color: black; }
 
-/* MAIN APP */
 #main-app { display: none; width: 100vw; height: 100vh; grid-template-columns: 320px 1fr; }
 #sidebar { background: rgba(0, 10, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; box-sizing: border-box; }
 #cube-container { position: relative; width: 100%; height: 100%; touch-action: none; }
@@ -25,12 +23,12 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 .lesson-box { background: #002200; border: 1px solid var(--neon); padding: 15px; margin-top: 20px; font-size: 0.85rem; }
 .warning-red { color: #ff3333; font-weight: bold; border: 1px solid #ff3333; padding: 5px; margin: 10px 0; }
 
-/* SIMPLE 3 BUTTON CONTROLS */
-.view-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; align-items: center; }
-.left-right-controls { display: flex; gap: 15px; }
-.arrow-btn { width: 60px; height: 60px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.8rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-.arrow-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 20px var(--neon); }
-.up-down-controls { display: flex; flex-direction: column; gap: 10px; }
+/* 3 AXES ABOVE/BELOW CUBE */
+.axis-controls-top { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+.axis-controls-bottom { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100; }
+.axis-btn { width: 50px; height: 50px; background: #001100; border: 2px solid var(--neon); color: var(--neon); font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.axis-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
+.axis-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -63,29 +61,25 @@ body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000;
 <h2 id="method-title">SYSTEM</h2>
 <div class="lesson-box">
 <h3>Lesson 1: Notations</h3>
-<p>3 Buttons = <b>Rotate View</b></p>
-<p>Click <b>cube faces</b> = <b>Twist layers</b></p>
-<div class="view-controls">
-<div class="left-right-controls">
-<button class="arrow-btn" onclick="rotateView('left')">◀</button>
-<button class="arrow-btn" onclick="rotateView('right')">▶</button>
-</div>
-<div class="up-down-controls">
-<button class="arrow-btn" onclick="rotateView('up')">▲</button>
-<button class="arrow-btn" onclick="rotateView('down')">▼</button>
-</div>
-</div>
+<p>Click <b>X/Y/Z buttons</b> (3x max) = Rotate View</p>
+<p>Click <b>cube faces</b> = Twist layers</p>
 </div>
 <button class="pop-btn" style="margin-top:auto" onclick="scramble()">SCRAMBLE</button>
 <button class="pop-btn" style="font-size:0.7rem" onclick="playDemo()">DEMO: R MOVE</button>
+<button class="pop-btn" style="font-size:0.7rem; margin-top:10px" onclick="resetView()">RESET VIEW</button>
 </div>
-<div id="cube-container"></div>
+<div id="cube-container">
+<div id="axis-top" class="axis-controls-top"></div>
+<div id="axis-bottom" class="axis-controls-bottom"></div>
+</div>
 </div>
 
 <script>
 let scene, camera, renderer, raycaster, mouse = new THREE.Vector2();
 let cubies = [], cubeGroup = new THREE.Group();
 let isRotating = false;
+let viewMoves = 0;
+const MAX_MOVES = 3;
 
 function goPage(id) {
 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -99,25 +93,11 @@ document.getElementById('method-title').innerText = method + " HUB";
 setup3D();
 }
 
-function rotateView(direction) {
-const angle = 0.5;
-if (direction === 'left') {
-cubeGroup.rotation.y += angle;
-} else if (direction === 'right') {
-cubeGroup.rotation.y -= angle;
-} else if (direction === 'up') {
-cubeGroup.rotation.x -= angle;
-} else if (direction === 'down') {
-cubeGroup.rotation.x += angle;
-}
-}
-
 function setup3D() {
 const container = document.getElementById('cube-container');
 scene = new THREE.Scene();
 camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
 camera.position.set(6, 6, 6);
-camera.lookAt(0,0,0);
 
 renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -143,6 +123,7 @@ cubeGroup.add(cubie);
 }
 }
 
+setupAxisControls();
 container.addEventListener('pointerdown', e => {
 mouse.x = (e.offsetX / container.clientWidth) * 2 - 1;
 mouse.y = -(e.offsetY / container.clientHeight) * 2 + 1;
@@ -154,12 +135,38 @@ const prime = getFaceDirection(intersects[0].face.normal);
 handleMove(axis, prime);
 }
 });
+}
 
-window.addEventListener('resize', () => {
-camera.aspect = container.clientWidth / container.clientHeight;
-camera.updateProjectionMatrix();
-renderer.setSize(container.clientWidth, container.clientHeight);
+function setupAxisControls() {
+const top = document.getElementById('axis-top');
+const bottom = document.getElementById('axis-bottom');
+top.innerHTML = '<button class="axis-btn" onclick="rotateAxis(\'x\')">X</button><button class="axis-btn" onclick="rotateAxis(\'y\')">Y</button>';
+bottom.innerHTML = '<button class="axis-btn" onclick="rotateAxis(\'z\')">Z</button>';
+}
+
+function rotateAxis(axis) {
+if (viewMoves >= MAX_MOVES) return;
+viewMoves++;
+updateAxisButtons();
+const angle = Math.PI / 2;
+if (axis === 'x') cubeGroup.rotation.x += angle;
+else if (axis === 'y') cubeGroup.rotation.y += angle;
+else cubeGroup.rotation.z += angle;
+}
+
+function updateAxisButtons() {
+const buttons = document.querySelectorAll('.axis-btn');
+buttons.forEach(btn => {
+if (viewMoves >= MAX_MOVES) btn.classList.add('disabled');
+else btn.classList.remove('disabled');
 });
+}
+
+function resetView() {
+cubeGroup.rotation.set(0, 0, 0);
+viewMoves = 0;
+updateAxisButtons();
+}
 
 function getFaceAxis(normal) {
 if (Math.abs(normal.x) > 0.5) return 'x';
@@ -181,18 +188,14 @@ return false;
 function handleMove(axis, prime) {
 if (isRotating) return;
 isRotating = true;
-
 const layer = 1;
 const pivot = new THREE.Group();
 scene.add(pivot);
-
 const moving = cubies.filter(c => {
 const p = c.getWorldPosition(new THREE.Vector3());
 return Math.round(p[axis]) === layer;
 });
-
 moving.forEach(c => pivot.attach(c));
-
 gsap.to(pivot.rotation, {
 [axis]: prime ? Math.PI/2 : -Math.PI/2,
 duration: 0.4,
@@ -202,12 +205,6 @@ moving.forEach(c => {
 cubeGroup.attach(c);
 const pos = c.position;
 c.position.set(Math.round(pos.x * 10)/10, Math.round(pos.y * 10)/10, Math.round(pos.z * 10)/10);
-const rot = c.rotation;
-c.rotation.set(
-Math.round(rot.x / (Math.PI/2)) * (Math.PI/2),
-Math.round(rot.y / (Math.PI/2)) * (Math.PI/2), 
-Math.round(rot.z / (Math.PI/2)) * (Math.PI/2)
-);
 });
 scene.remove(pivot);
 isRotating = false;
@@ -221,12 +218,8 @@ camera.lookAt(0,0,0);
 renderer.render(scene, camera); 
 }
 animate();
-}
 
-function playDemo() { 
-handleMove('x', false); 
-}
-
+function playDemo() { handleMove('x', false); }
 function scramble() {
 let i = 0;
 const t = setInterval(() => {
