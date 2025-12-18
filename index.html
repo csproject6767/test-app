@@ -5,81 +5,20 @@
 <meta name="viewport" content="width=device-width,height=device-height,user-scalable=no,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
 <title>Rubik's Cube</title>
 
-<!-- UI STYLES (UNCHANGED STRUCTURE) -->
+<link rel="stylesheet" href="style.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/95/three.min.js"></script>
+
 <style>
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-  font-family:'Courier New',monospace;
-}
-
-.ui{
-  position:relative;
-  width:100%;
-  height:100%;
-}
-
-.ui__background{
+/* DO NOT TOUCH ORIGINAL UI — ONLY ENSURE GAME LAYER WORKS */
+.ui__game {
   position:absolute;
   inset:0;
-  background:radial-gradient(circle at center,#111,#000);
-  z-index:0;
-}
-
-.ui__game{
-  position:absolute;
-  inset:0;
-  z-index:1;
-}
-
-.ui__texts,
-.ui__prefs,
-.ui__theme,
-.ui__stats,
-.ui__buttons{
-  position:absolute;
-  z-index:5;
-  color:#0f0;
-}
-
-.ui__texts{
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  text-align:center;
-}
-
-.text--title span{
-  display:block;
-  font-size:3rem;
-  letter-spacing:.2rem;
-}
-
-.text{
-  opacity:.9;
-}
-
-.ui__buttons{
-  inset:0;
-  pointer-events:none;
-}
-
-.btn{
   pointer-events:auto;
-  position:absolute;
-  background:#000;
-  border:1px solid #0f0;
-  color:#0f0;
-  padding:10px;
 }
-.btn--bl{left:20px;bottom:20px}
-.btn--br{right:20px;bottom:20px}
+.ui__game canvas {
+  display:block;
+}
 </style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/95/three.min.js"></script>
 </head>
 
 <body>
@@ -87,7 +26,6 @@ html,body{
 <div class="ui">
 
   <div class="ui__background"></div>
-
   <div class="ui__game"></div>
 
   <div class="ui__texts">
@@ -98,80 +36,112 @@ html,body{
     <div class="text text--note">Double tap to start</div>
     <div class="text text--timer">0:00</div>
     <div class="text text--complete"><span>Complete!</span></div>
-    <div class="text text--best-time"><span>Best Time!</span></div>
+    <div class="text text--best-time">
+      <span>Best Time!</span>
+    </div>
   </div>
 
-  <div class="ui__prefs"></div>
-  <div class="ui__theme"></div>
+  <div class="ui__prefs">
+    <range name="size" title="Cube Size" list="2,3,4,5"></range>
+    <range name="flip" title="Flip Type" list="Swift,Smooth,Bounce"></range>
+    <range name="scramble" title="Scramble Length" list="20,25,30"></range>
+    <range name="fov" title="Camera Angle" list="Ortographic,Perspective"></range>
+    <range name="theme" title="Color Scheme" list="Cube,Erno,Dust,Camo,Rain"></range>
+  </div>
+
+  <div class="ui__theme">
+    <range name="hue" title="Hue" color></range>
+    <range name="saturation" title="Saturation" color></range>
+    <range name="lightness" title="Lightness" color></range>
+  </div>
+
   <div class="ui__stats"></div>
 
   <div class="ui__buttons">
-    <button class="btn btn--bl">STATS</button>
-    <button class="btn btn--br">SETTINGS</button>
+    <button class="btn btn--bl btn--stats"></button>
+    <button class="btn btn--br btn--prefs"></button>
+    <button class="btn btn--bl btn--back"></button>
+    <button class="btn btn--br btn--theme"></button>
+    <button class="btn btn--br btn--reset"></button>
   </div>
 
 </div>
 
 <script>
-/* ================== THREE SETUP ================== */
-let scene,camera,renderer,cubeGroup;
+/* ================== THREE (CUBE ONLY) ================== */
 
-init();
+let scene, camera, renderer, cubeGroup;
+
+initCube();
 animate();
 
-function init(){
-  const container=document.querySelector('.ui__game');
+function initCube(){
+  const container = document.querySelector('.ui__game');
 
-  scene=new THREE.Scene();
+  scene = new THREE.Scene();
 
-  const w=container.clientWidth;
-  const h=container.clientHeight;
-
-  camera=new THREE.PerspectiveCamera(45,w/h,0.1,100);
+  camera = new THREE.PerspectiveCamera(
+    45,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    100
+  );
   camera.position.set(6,6,6);
   camera.lookAt(0,0,0);
 
-  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-  renderer.setSize(w,h);
+  renderer = new THREE.WebGLRenderer({
+    antialias:true,
+    alpha:true   // keeps UI clean
+  });
+
+  renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff,.8));
-  const d=new THREE.DirectionalLight(0xffffff,.6);
-  d.position.set(5,10,7);
-  scene.add(d);
+  scene.add(new THREE.AmbientLight(0xffffff,0.8));
+  const light = new THREE.DirectionalLight(0xffffff,0.6);
+  light.position.set(5,10,7);
+  scene.add(light);
 
-  cubeGroup=buildCube();
+  cubeGroup = buildCube();
   scene.add(cubeGroup);
 
-  window.addEventListener('resize',resize);
+  window.addEventListener('resize', onResize);
 }
 
-function resize(){
-  const c=document.querySelector('.ui__game');
-  camera.aspect=c.clientWidth/c.clientHeight;
+function onResize(){
+  const c = document.querySelector('.ui__game');
+  camera.aspect = c.clientWidth / c.clientHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(c.clientWidth,c.clientHeight);
+  renderer.setSize(c.clientWidth, c.clientHeight);
 }
 
-/* ================== CUBE ================== */
+/* ================== RUBIK'S CUBE ================== */
+
 function buildCube(){
-  const g=new THREE.Group();
-  const C=[0xff0000,0xff8000,0xffffff,0xffff00,0x00ff00,0x0000ff];
+  const g = new THREE.Group();
+  const colors = [
+    0xff0000,  // R
+    0xff8000,  // L
+    0xffffff,  // U
+    0xffff00,  // D
+    0x00ff00,  // F
+    0x0000ff   // B
+  ];
 
   for(let x=-1;x<=1;x++)
   for(let y=-1;y<=1;y++)
   for(let z=-1;z<=1;z++){
-    const mats=[
-      new THREE.MeshLambertMaterial({color:x==1?C[0]:0x111111}),
-      new THREE.MeshLambertMaterial({color:x==-1?C[1]:0x111111}),
-      new THREE.MeshLambertMaterial({color:y==1?C[2]:0x111111}),
-      new THREE.MeshLambertMaterial({color:y==-1?C[3]:0x111111}),
-      new THREE.MeshLambertMaterial({color:z==1?C[4]:0x111111}),
-      new THREE.MeshLambertMaterial({color:z==-1?C[5]:0x111111}),
+    const mats = [
+      new THREE.MeshLambertMaterial({color:x=== 1?colors[0]:0x111111}),
+      new THREE.MeshLambertMaterial({color:x===-1?colors[1]:0x111111}),
+      new THREE.MeshLambertMaterial({color:y=== 1?colors[2]:0x111111}),
+      new THREE.MeshLambertMaterial({color:y===-1?colors[3]:0x111111}),
+      new THREE.MeshLambertMaterial({color:z=== 1?colors[4]:0x111111}),
+      new THREE.MeshLambertMaterial({color:z===-1?colors[5]:0x111111}),
     ];
-    const m=new THREE.Mesh(
-      new THREE.BoxGeometry(.95,.95,.95),
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(0.95,0.95,0.95),
       mats
     );
     m.position.set(x,y,z);
@@ -181,9 +151,10 @@ function buildCube(){
 }
 
 /* ================== LOOP ================== */
+
 function animate(){
   requestAnimationFrame(animate);
-  cubeGroup.rotation.y+=0.002;
+  cubeGroup.rotation.y += 0.0015;
   renderer.render(scene,camera);
 }
 </script>
