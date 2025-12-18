@@ -2,254 +2,190 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Rubik's Cube Trainer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rubik's Pro Terminal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 <style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
-  font-family: monospace;
-}
-#ui {
-  position: fixed;
-  left: 10px;
-  top: 10px;
-  color: #0f0;
-  z-index: 10;
-}
-button {
-  background: black;
-  border: 1px solid #0f0;
-  color: #0f0;
-  padding: 8px 14px;
-  margin-top: 6px;
-  cursor: pointer;
-}
-button:hover {
-  background: #0f0;
-  color: black;
-}
+:root { --neon:#00ff00; --bg:#000; }
+html,body{margin:0;width:100%;height:100%;background:#000;color:var(--neon);font-family:'Courier New',monospace;overflow:hidden}
+#overlay{position:fixed;inset:0;z-index:9999;background:#000;display:flex;justify-content:center;align-items:center}
+.page{display:none;text-align:center;border:2px solid var(--neon);padding:40px;background:#001100;max-width:500px}
+.page.active{display:block}
+.pop-btn{background:black;border:2px solid var(--neon);color:var(--neon);padding:12px 25px;cursor:pointer;margin:10px;font-weight:bold}
+.pop-btn:hover{background:var(--neon);color:black}
+#main-app{display:none;width:100vw;height:100vh;grid-template-columns:320px 1fr}
+#sidebar{background:rgba(0,10,0,.95);border-right:1px solid var(--neon);padding:25px;display:flex;flex-direction:column}
+#cube-container{width:100%;height:100%;touch-action:none}
+.lesson-box{background:#002200;border:1px solid var(--neon);padding:15px;margin-top:20px;font-size:.85rem}
+.warning-red{color:#ff3333;font-weight:bold;border:1px solid #ff3333;padding:5px;margin:10px 0}
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <h3>Rubik Trainer</h3>
-  <button onclick="scramble()">Scramble</button>
-  <button onclick="resetCube()">Reset</button>
+<div id="overlay">
+  <div id="p1" class="page active">
+    <h1>[ INITIALIZING ]</h1>
+    <button class="pop-btn" onclick="goPage('p-warn')">START LEARNING</button>
+  </div>
+  <div id="p-warn" class="page">
+    <h1 style="color:#ff3333">⚠ BEWARE ⚠</h1>
+    <div class="warning-red">PATIENCE IS REQUIRED</div>
+    <p>Mastering the cube takes hours of practice.</p>
+    <button class="pop-btn" onclick="goPage('p-method')">I HAVE PATIENCE</button>
+  </div>
+  <div id="p-method" class="page">
+    <h1>SELECT METHOD</h1>
+    <p><b>CFOP:</b> Fast, hard.</p>
+    <button class="pop-btn" onclick="initApp('CFOP')">CHOOSE CFOP</button>
+    <hr style="border-color:var(--neon)">
+    <p><b>BEGINNER:</b> Simple.</p>
+    <button class="pop-btn" onclick="initApp('Beginner')">CHOOSE BEGINNER</button>
+  </div>
+</div>
+
+<div id="main-app">
+  <div id="sidebar">
+    <h2 id="method-title">SYSTEM</h2>
+    <div class="lesson-box">
+      <h3>Lesson 1: Notation</h3>
+      <p>Drag background to rotate.</p>
+      <p>Drag face to turn.</p>
+    </div>
+    <button class="pop-btn" style="margin-top:auto" onclick="scramble()">SCRAMBLE</button>
+  </div>
+  <div id="cube-container"></div>
 </div>
 
 <script>
-/* -------------------- SCENE -------------------- */
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
-camera.position.set(6, 6, 6);
-camera.lookAt(0, 0, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(innerWidth, innerHeight);
-document.body.appendChild(renderer.domElement);
-
-window.addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-const light = new THREE.DirectionalLight(0xffffff, 0.5);
-light.position.set(5, 10, 7);
-scene.add(light);
-
-/* -------------------- CUBE DATA -------------------- */
-const cubeGroup = new THREE.Group();
-scene.add(cubeGroup);
-
-const cubies = [];
-const size = 1;
-const gap = 0.05;
-
-const COLORS = {
-  R: 0xff0000,
-  L: 0xff8000,
-  U: 0xffffff,
-  D: 0xffff00,
-  F: 0x00ff00,
-  B: 0x0000ff,
-  X: 0x000000
-};
-
-function createCubie(x, y, z) {
-  const materials = [
-    new THREE.MeshLambertMaterial({ color: x ===  1 ? COLORS.R : COLORS.X }),
-    new THREE.MeshLambertMaterial({ color: x === -1 ? COLORS.L : COLORS.X }),
-    new THREE.MeshLambertMaterial({ color: y ===  1 ? COLORS.U : COLORS.X }),
-    new THREE.MeshLambertMaterial({ color: y === -1 ? COLORS.D : COLORS.X }),
-    new THREE.MeshLambertMaterial({ color: z ===  1 ? COLORS.F : COLORS.X }),
-    new THREE.MeshLambertMaterial({ color: z === -1 ? COLORS.B : COLORS.X }),
-  ];
-
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(size, size, size),
-    materials
-  );
-
-  mesh.position.set(x, y, z);
-  mesh.userData.coord = new THREE.Vector3(x, y, z);
-
-  cubeGroup.add(mesh);
-  cubies.push(mesh);
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function initApp(method){
+  overlay.style.display='none';
+  document.getElementById('main-app').style.display='grid';
+  document.getElementById('method-title').innerText=method+' HUB';
+  initCube();
 }
 
-function buildCube() {
-  cubies.length = 0;
-  cubeGroup.clear();
-  for (let x = -1; x <= 1; x++)
-    for (let y = -1; y <= 1; y++)
-      for (let z = -1; z <= 1; z++)
-        createCubie(x * (size + gap), y * (size + gap), z * (size + gap));
-}
-buildCube();
+/* ======== CUBE ONLY (REPLACED) ======== */
+let scene,camera,renderer,cubeGroup;
+let cubies=[],raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
+let dragStart=null,picked=null,normal=null,rotating=false;
+let camRot={x:0,y:0};
 
-/* -------------------- CONTROLS -------------------- */
-let isRotating = false;
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+function initCube(){
+  const c=document.getElementById('cube-container');
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(45,c.clientWidth/c.clientHeight,.1,100);
+  camera.position.set(6,6,6);
+  camera.lookAt(0,0,0);
 
-let dragStart = null;
-let pickedFace = null;
-let pickedCubie = null;
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setSize(c.clientWidth,c.clientHeight);
+  c.appendChild(renderer.domElement);
 
-/* CAMERA ROTATION */
-let camRot = { x: 0, y: 0 };
+  scene.add(new THREE.AmbientLight(0xffffff,.8));
+  const d=new THREE.DirectionalLight(0xffffff,.5);
+  d.position.set(5,10,7);scene.add(d);
 
-renderer.domElement.addEventListener('pointerdown', e => {
-  dragStart = { x: e.clientX, y: e.clientY };
+  cubeGroup=new THREE.Group();
+  scene.add(cubeGroup);
+  buildCube();
 
-  mouse.x = (e.clientX / innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
+  c.addEventListener('pointerdown',onDown);
+  c.addEventListener('pointerup',onUp);
 
-  const hits = raycaster.intersectObjects(cubies);
-  if (hits.length) {
-    pickedCubie = hits[0].object;
-    pickedFace = hits[0].face.normal.clone();
-  } else {
-    pickedCubie = null;
-  }
-});
-
-renderer.domElement.addEventListener('pointerup', e => {
-  if (!dragStart) return;
-
-  const dx = e.clientX - dragStart.x;
-  const dy = e.clientY - dragStart.y;
-
-  if (!pickedCubie) {
-    camRot.y += dx * 0.005;
-    camRot.x += dy * 0.005;
-    cubeGroup.rotation.set(camRot.x, camRot.y, 0);
-  } else {
-    if (!isRotating) performFaceTurn(pickedCubie, pickedFace, dx, dy);
-  }
-
-  dragStart = null;
-  pickedCubie = null;
-});
-
-/* -------------------- FACE ROTATION -------------------- */
-function performFaceTurn(cubie, normal, dx, dy) {
-  isRotating = true;
-
-  let axis, layer, dir;
-  const threshold = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-
-  if (Math.abs(normal.x) === 1) {
-    axis = 'x';
-    layer = cubie.position.x;
-    dir = threshold > 0 ? 1 : -1;
-  } else if (Math.abs(normal.y) === 1) {
-    axis = 'y';
-    layer = cubie.position.y;
-    dir = threshold > 0 ? 1 : -1;
-  } else {
-    axis = 'z';
-    layer = cubie.position.z;
-    dir = threshold > 0 ? 1 : -1;
-  }
-
-  rotateLayer(axis, layer, dir);
+  animate();
 }
 
-function rotateLayer(axis, layer, dir) {
-  const pivot = new THREE.Group();
-  scene.add(pivot);
+function buildCube(){
+  cubies=[];cubeGroup.clear();
+  const cols=[0xff0000,0xff8000,0xffffff,0xffff00,0x00ff00,0x0000ff];
+  for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
+    const mats=[
+      new THREE.MeshLambertMaterial({color:x==1?cols[0]:0}),
+      new THREE.MeshLambertMaterial({color:x==-1?cols[1]:0}),
+      new THREE.MeshLambertMaterial({color:y==1?cols[2]:0}),
+      new THREE.MeshLambertMaterial({color:y==-1?cols[3]:0}),
+      new THREE.MeshLambertMaterial({color:z==1?cols[4]:0}),
+      new THREE.MeshLambertMaterial({color:z==-1?cols[5]:0}),
+    ];
+    const m=new THREE.Mesh(new THREE.BoxGeometry(.95,.95,.95),mats);
+    m.position.set(x,y,z);
+    cubies.push(m);cubeGroup.add(m);
+  }
+}
 
-  const moving = cubies.filter(c =>
-    Math.abs(c.position[axis] - layer) < 0.1
-  );
+function onDown(e){
+  dragStart={x:e.clientX,y:e.clientY};
+  mouse.x=(e.offsetX/renderer.domElement.width)*2-1;
+  mouse.y=-(e.offsetY/renderer.domElement.height)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hit=raycaster.intersectObjects(cubies)[0];
+  if(hit){picked=hit.object;normal=hit.face.normal.clone();}
+  else picked=null;
+}
 
-  moving.forEach(c => pivot.attach(c));
+function onUp(e){
+  if(!dragStart)return;
+  const dx=e.clientX-dragStart.x;
+  const dy=e.clientY-dragStart.y;
+  if(!picked){
+    camRot.y+=dx*.005;camRot.x+=dy*.005;
+    cubeGroup.rotation.set(camRot.x,camRot.y,0);
+  }else if(!rotating){
+    turn(picked,normal,dx,dy);
+  }
+  dragStart=null;picked=null;
+}
 
-  const target = {};
-  target[axis] = dir * Math.PI / 2;
+function turn(c,n,dx,dy){
+  rotating=true;
+  let axis,layer,dir=(Math.abs(dx)>Math.abs(dy)?dx:dy)>0?1:-1;
+  if(Math.abs(n.x)==1){axis='x';layer=c.position.x}
+  else if(Math.abs(n.y)==1){axis='y';layer=c.position.y}
+  else{axis='z';layer=c.position.z}
 
-  new THREE.Clock();
-  const start = performance.now();
+  const pivot=new THREE.Group();scene.add(pivot);
+  const moving=cubies.filter(o=>Math.abs(o.position[axis]-layer)<.1);
+  moving.forEach(o=>pivot.attach(o));
+  const start=performance.now();
 
-  function animateTurn() {
-    const t = Math.min((performance.now() - start) / 200, 1);
-    pivot.rotation[axis] = target[axis] * t;
-
-    if (t < 1) requestAnimationFrame(animateTurn);
-    else {
-      moving.forEach(c => {
-        cubeGroup.attach(c);
-        c.position.x = Math.round(c.position.x);
-        c.position.y = Math.round(c.position.y);
-        c.position.z = Math.round(c.position.z);
-        c.rotation.set(
-          Math.round(c.rotation.x / (Math.PI/2)) * (Math.PI/2),
-          Math.round(c.rotation.y / (Math.PI/2)) * (Math.PI/2),
-          Math.round(c.rotation.z / (Math.PI/2)) * (Math.PI/2)
+  (function anim(){
+    const t=Math.min((performance.now()-start)/200,1);
+    pivot.rotation[axis]=dir*Math.PI/2*t;
+    if(t<1)requestAnimationFrame(anim);
+    else{
+      moving.forEach(o=>{
+        cubeGroup.attach(o);
+        o.position.set(Math.round(o.position.x),Math.round(o.position.y),Math.round(o.position.z));
+        o.rotation.set(
+          Math.round(o.rotation.x/(Math.PI/2))*(Math.PI/2),
+          Math.round(o.rotation.y/(Math.PI/2))*(Math.PI/2),
+          Math.round(o.rotation.z/(Math.PI/2))*(Math.PI/2)
         );
       });
-      scene.remove(pivot);
-      isRotating = false;
+      scene.remove(pivot);rotating=false;
     }
-  }
-  animateTurn();
+  })();
 }
 
-/* -------------------- ACTIONS -------------------- */
-function scramble() {
-  if (isRotating) return;
-  const axes = ['x','y','z'];
-  let i = 0;
-  const s = setInterval(() => {
-    rotateLayer(
-      axes[Math.floor(Math.random()*3)],
-      [-1,0,1][Math.floor(Math.random()*3)] * (size+gap),
-      Math.random() > 0.5 ? 1 : -1
-    );
-    if (++i > 12) clearInterval(s);
-  }, 250);
+function scramble(){
+  if(rotating)return;
+  let i=0,axes=['x','y','z'];
+  const s=setInterval(()=>{
+    const a=axes[Math.floor(Math.random()*3)];
+    const l=[-1,0,1][Math.floor(Math.random()*3)];
+    turn(cubies.find(o=>o.position[a]==l),{x:a=='x',y:a=='y',z:a=='z'},1,0);
+    if(++i>10)clearInterval(s);
+  },300);
 }
 
-function resetCube() {
-  buildCube();
-}
-
-/* -------------------- LOOP -------------------- */
-function animate() {
+function animate(){
   requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
-animate();
 </script>
 </body>
 </html>
