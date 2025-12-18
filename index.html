@@ -2,60 +2,83 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Rubik's Neon - Ultra Stable</title>
+    <title>Rubik's Trainer Pro</title>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <style>
         :root { --neon: #00ff00; --bg: #000; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: var(--neon); font-family: 'Courier New', monospace; overflow: hidden; }
 
-        /* SURVEY SYSTEM */
-        #survey-layer { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .survey-page { display: none; text-align: center; border: 2px solid var(--neon); padding: 40px; background: #001100; box-shadow: 0 0 20px rgba(0,255,0,0.3); }
-        .active { display: block; }
-        
+        /* MULTI-STAGE UI OVERLAY */
+        #overlay { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .page { display: none; text-align: center; border: 2px solid var(--neon); padding: 40px; background: #001100; max-width: 600px; }
+        .active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
         .pop-btn {
             background: black; border: 2px solid var(--neon); color: var(--neon); padding: 12px 25px;
             font-size: 1rem; cursor: pointer; margin: 10px; transition: 0.2s; font-weight: bold; text-transform: uppercase;
         }
-        .pop-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); transform: scale(1.05); }
+        .pop-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 15px var(--neon); }
 
-        /* MAIN APP */
-        #main-interface { display: none; width: 100vw; height: 100vh; grid-template-columns: 320px 1fr; }
-        #sidebar { background: rgba(0, 5, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; }
+        .warning-text { color: #ff3333; font-weight: bold; border: 1px solid #ff3333; padding: 10px; margin-bottom: 20px; }
+
+        /* MAIN APP LAYOUT */
+        #main-interface { display: none; width: 100vw; height: 100vh; grid-template-columns: 350px 1fr; }
+        #sidebar { background: rgba(0, 10, 0, 0.95); border-right: 1px solid var(--neon); padding: 25px; z-index: 10; display: flex; flex-direction: column; }
         #cube-viewport { position: relative; width: 100%; height: 100%; background: #000; }
 
-        .kb-box { border: 1px solid #004400; padding: 15px; margin: 20px 0; font-size: 0.85rem; line-height: 1.8; background: #000a00; }
-        kbd { background: #111; border: 1px solid var(--neon); padding: 2px 6px; color: #fff; border-radius: 3px; font-family: sans-serif; }
+        .lesson-box { background: #002200; border: 1px solid var(--neon); padding: 15px; margin-top: 20px; }
+        .notation-key { background: var(--neon); color: #000; padding: 2px 6px; font-weight: bold; border-radius: 3px; }
     </style>
 </head>
 <body>
 
-    <div id="survey-layer">
-        <div id="p1" class="survey-page active">
+    <div id="overlay">
+        <div id="p1" class="page active">
             <h1>[ INITIALIZING SCAN ]</h1>
-            <button class="pop-btn" onclick="next('p2')">I am a beginner</button>
-            <button class="pop-btn" onclick="next('p2')">I am advanced</button>
+            <p>IDENTIFY CURRENT SKILL LEVEL</p>
+            <button class="pop-btn" onclick="showPage('p-warn')">Beginner</button>
+            <button class="pop-btn" onclick="showPage('p-warn')">Advanced</button>
         </div>
-        <div id="p2" class="survey-page">
-            <h1>[ PROTOCOL ]</h1>
-            <button class="pop-btn" onclick="launch()">Start Learning</button>
-            <button class="pop-btn" onclick="launch()">Interactive Solver</button>
+
+        <div id="p-warn" class="page">
+            <h1 style="color: #ff3333;">⚠ WARNING ⚠</h1>
+            <div class="warning-text">PATIENCE REQUIRED</div>
+            <p>Learning the cube is not instant. It takes time, focus, and many hours of practice. Do you have the patience to continue?</p>
+            <button class="pop-btn" onclick="showPage('p-method')">I HAVE PATIENCE</button>
+        </div>
+
+        <div id="p-method" class="page">
+            <h1>SELECT METHOD</h1>
+            <div style="margin-bottom: 20px;">
+                <h3>CFOP METHOD</h3>
+                <p>High efficiency, professional speed. <br><i>Note: Hard to memorize (78+ algorithms).</i></p>
+                <button class="pop-btn" onclick="launch('CFOP')">CHOOSE CFOP</button>
+            </div>
+            <hr style="border-color: var(--neon);">
+            <div style="margin-top: 20px;">
+                <h3>BEGINNER METHOD</h3>
+                <p>Layer-by-layer approach.<br><i>Note: Very simple to memorize.</i></p>
+                <button class="pop-btn" onclick="launch('Beginner')">CHOOSE BEGINNER</button>
+            </div>
         </div>
     </div>
 
     <div id="main-interface">
         <div id="sidebar">
-            <h2 style="border-bottom: 2px solid var(--neon); padding-bottom: 10px;">TERMINAL</h2>
-            <div class="kb-box">
-                <b>MANIPULATION:</b><br>
-                <kbd>U</kbd> Top | <kbd>D</kbd> Bottom<br>
-                <kbd>L</kbd> Left | <kbd>R</kbd> Right<br>
-                <kbd>F</kbd> Front | <kbd>B</kbd> Back<br>
-                <small>(Shift for Reverse)</small>
+            <h2 id="method-title">TRAINING</h2>
+            <div id="lesson-content" class="lesson-box">
+                <h3>Lesson 1: Notations</h3>
+                <p>To solve a cube, you must read "Notations". Each letter represents a 90° turn.</p>
+                <p>Watch the cube to see <span class="notation-key">R</span> (Right Face).</p>
+                <button class="pop-btn" style="font-size: 0.8rem;" onclick="demoMove('R')">DEMO MOVE</button>
             </div>
-            <button class="pop-btn" onclick="scramble()">SCRAMBLE DATA</button>
-            <button class="pop-btn" style="font-size: 0.7rem; margin-top: auto;" onclick="location.reload()">REBOOT</button>
+            
+            <div id="controls" style="margin-top: auto;">
+                <p><small>Manual Keys: U, D, L, R, F, B</small></p>
+                <button class="pop-btn" style="width: 100%;" onclick="scramble()">SCRAMBLE</button>
+            </div>
         </div>
         <div id="cube-viewport"></div>
     </div>
@@ -64,52 +87,46 @@
         let scene, camera, renderer, cubeGroup, isMoving = false;
         const cubies = [];
 
-        function next(id) {
-            document.querySelectorAll('.survey-page').forEach(p => p.classList.remove('active'));
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
 
-        function launch() {
-            document.getElementById('survey-layer').style.display = 'none';
+        function launch(method) {
+            document.getElementById('overlay').style.display = 'none';
             document.getElementById('main-interface').style.display = 'grid';
-            initApp();
+            document.getElementById('method-title').innerText = method + " HUB";
+            init3D();
         }
 
-        function initApp() {
+        function init3D() {
             const container = document.getElementById('cube-viewport');
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.set(5, 5, 5);
-            camera.lookAt(0, 0, 0);
+            camera.lookAt(0,0,0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-            const sun = new THREE.DirectionalLight(0xffffff, 0.4);
-            sun.position.set(10, 20, 10);
-            scene.add(sun);
-
+            scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+            
             cubeGroup = new THREE.Group();
             scene.add(cubeGroup);
 
             // 
-            // Standard Cube Colors: Red, Orange, White, Yellow, Green, Blue
-            const faceColors = [0xff0000, 0xff8800, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
+            const colors = [0xff0000, 0xff8800, 0xffffff, 0xffff00, 0x00ff00, 0x0000ff];
 
             for (let x = -1; x <= 1; x++) {
                 for (let y = -1; y <= 1; y++) {
                     for (let z = -1; z <= 1; z++) {
-                        const mats = faceColors.map(c => new THREE.MeshLambertMaterial({ color: c }));
+                        const mats = colors.map(c => new THREE.MeshLambertMaterial({ color: c }));
                         const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), mats);
-                        
                         cubie.position.set(x, y, z);
                         
-                        // Neon Grid lines
                         const edges = new THREE.EdgesGeometry(cubie.geometry);
-                        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 }));
-                        cubie.add(line);
+                        cubie.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x00ff00 })));
 
                         cubies.push(cubie);
                         cubeGroup.add(cubie);
@@ -117,73 +134,55 @@
                 }
             }
 
-            // Mouse Interaction for Viewport Rotation
+            // Mouse rotation
             let drag = false;
             container.addEventListener('mousedown', () => drag = true);
             window.addEventListener('mouseup', () => drag = false);
             window.addEventListener('mousemove', (e) => {
-                if (drag) {
-                    cubeGroup.rotation.y += e.movementX * 0.008;
-                    cubeGroup.rotation.x += e.movementY * 0.008;
+                if(drag) {
+                    cubeGroup.rotation.y += e.movementX * 0.01;
+                    cubeGroup.rotation.x += e.movementY * 0.01;
                 }
             });
 
-            // Keyboard Control
+            // Manual Keyboard
             window.addEventListener('keydown', (e) => {
-                if (isMoving) return;
+                const moves = {'R':['x',1],'L':['x',-1],'U':['y',1],'D':['y',-1],'F':['z',1],'B':['z',-1]};
                 const key = e.key.toUpperCase();
-                const moves = { 
-                    'R': ['x', 1], 'L': ['x', -1], 
-                    'U': ['y', 1], 'D': ['y', -1], 
-                    'F': ['z', 1], 'B': ['z', -1] 
-                };
-                if (moves[key]) executeMove(moves[key][0], moves[key][1], e.shiftKey);
+                if(moves[key] && !isMoving) rotate(moves[key][0], moves[key][1], e.shiftKey);
             });
 
-            function animate() {
-                requestAnimationFrame(animate);
-                renderer.render(scene, camera);
-            }
+            function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
             animate();
         }
 
-        function executeMove(axis, layer, prime) {
+        // STABILIZED ROTATION SYSTEM
+        function rotate(axis, layer, prime) {
             isMoving = true;
             const pivot = new THREE.Group();
             scene.add(pivot);
 
-            // Selection based on current world position to avoid drift
-            const movingSet = [];
+            const activeSet = [];
             const worldPos = new THREE.Vector3();
-
             cubies.forEach(c => {
                 c.getWorldPosition(worldPos);
-                if (Math.round(worldPos[axis]) === layer) {
-                    movingSet.push(c);
-                }
+                if(Math.round(worldPos[axis]) === layer) activeSet.push(c);
             });
 
-            movingSet.forEach(c => pivot.attach(c));
-
-            const targetRot = prime ? Math.PI / 2 : -Math.PI / 2;
+            activeSet.forEach(c => pivot.attach(c));
+            const angle = prime ? Math.PI/2 : -Math.PI/2;
 
             gsap.to(pivot.rotation, {
-                [axis]: targetRot,
-                duration: 0.3,
-                ease: "power2.inOut",
+                [axis]: angle, duration: 0.4, ease: "power2.inOut",
                 onComplete: () => {
-                    movingSet.forEach(c => {
+                    activeSet.forEach(c => {
                         cubeGroup.attach(c);
-                        
-                        // SNAPPING LOGIC: The "Anti-Glitch" secret
-                        // Resetting local positions and rotations to perfect integers
-                        c.position.x = Math.round(c.position.x);
-                        c.position.y = Math.round(c.position.y);
-                        c.position.z = Math.round(c.position.z);
-                        
-                        c.rotation.x = Math.round(c.rotation.x / (Math.PI/2)) * (Math.PI/2);
-                        c.rotation.y = Math.round(c.rotation.y / (Math.PI/2)) * (Math.PI/2);
-                        c.rotation.z = Math.round(c.rotation.z / (Math.PI/2)) * (Math.PI/2);
+                        c.position.set(Math.round(c.position.x), Math.round(c.position.y), Math.round(c.position.z));
+                        c.rotation.set(
+                            Math.round(c.rotation.x / (Math.PI/2)) * (Math.PI/2),
+                            Math.round(c.rotation.y / (Math.PI/2)) * (Math.PI/2),
+                            Math.round(c.rotation.z / (Math.PI/2)) * (Math.PI/2)
+                        );
                     });
                     scene.remove(pivot);
                     isMoving = false;
@@ -191,21 +190,19 @@
             });
         }
 
-        function scramble() {
-            const keys = ['R', 'L', 'U', 'D', 'F', 'B'];
-            let count = 0;
-            const scrambler = setInterval(() => {
-                executeMove(keys[Math.floor(Math.random()*6)].toLowerCase() == 'u' || keys[Math.floor(Math.random()*6)].toLowerCase() == 'd' ? 'y' : 'x', 1, false);
-                if (++count > 12) clearInterval(scrambler);
-            }, 350);
+        function demoMove(move) {
+            const map = {'R':['x',1], 'L':['x',-1], 'U':['y',1], 'D':['y',-1], 'F':['z',1], 'B':['z',-1]};
+            if(!isMoving) rotate(map[move][0], map[move][1], false);
         }
 
-        window.addEventListener('resize', () => {
-            const container = document.getElementById('cube-viewport');
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        });
+        function scramble() {
+            let i = 0;
+            const timer = setInterval(() => {
+                const axes = ['x','y','z'];
+                rotate(axes[Math.floor(Math.random()*3)], 1, false);
+                if(i++ > 10) clearInterval(timer);
+            }, 500);
+        }
     </script>
 </body>
 </html>
