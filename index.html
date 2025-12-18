@@ -1,45 +1,88 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Rubik's Pro Terminal</title>
+<title>Cubezilla</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 <style>
-:root { --neon:#00ff00; --bg:#000; }
-html,body{margin:0;width:100%;height:100%;background:#000;color:var(--neon);font-family:'Courier New',monospace;overflow:hidden}
-#overlay{position:fixed;inset:0;z-index:9999;background:#000;display:flex;justify-content:center;align-items:center}
-.page{display:none;text-align:center;border:2px solid var(--neon);padding:40px;background:#001100;max-width:500px}
+:root { --neon:#00ff00; }
+html,body{
+  margin:0;width:100%;height:100%;
+  background:#000;color:var(--neon);
+  font-family:'Courier New',monospace;
+  overflow:hidden;
+}
+#overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:#000;
+  display:flex;justify-content:center;align-items:center;
+}
+.page{
+  display:none;text-align:center;
+  border:2px solid var(--neon);
+  padding:40px;background:#001100;
+  max-width:520px;
+}
 .page.active{display:block}
-.pop-btn{background:black;border:2px solid var(--neon);color:var(--neon);padding:12px 25px;cursor:pointer;margin:10px;font-weight:bold}
+.pop-btn{
+  background:black;border:2px solid var(--neon);
+  color:var(--neon);padding:12px 25px;
+  cursor:pointer;margin:10px;font-weight:bold;
+}
 .pop-btn:hover{background:var(--neon);color:black}
-#main-app{display:none;width:100vw;height:100vh;grid-template-columns:320px 1fr}
-#sidebar{background:rgba(0,10,0,.95);border-right:1px solid var(--neon);padding:25px;display:flex;flex-direction:column}
-#cube-container{width:100%;height:100%;touch-action:none}
-.lesson-box{background:#002200;border:1px solid var(--neon);padding:15px;margin-top:20px;font-size:.85rem}
-.warning-red{color:#ff3333;font-weight:bold;border:1px solid #ff3333;padding:5px;margin:10px 0}
+
+#main-app{
+  display:none;
+  width:100vw;height:100vh;
+  grid-template-columns:320px 1fr;
+}
+#sidebar{
+  background:rgba(0,10,0,.95);
+  border-right:1px solid var(--neon);
+  padding:25px;
+  display:flex;flex-direction:column;
+}
+#cube-container{
+  width:100%;height:100%;
+}
+.lesson-box{
+  background:#002200;
+  border:1px solid var(--neon);
+  padding:15px;margin-top:20px;
+  font-size:.85rem;
+}
+.warning-red{
+  color:#ff3333;font-weight:bold;
+  border:1px solid #ff3333;
+  padding:5px;margin:10px 0;
+}
 </style>
 </head>
 <body>
 
 <div id="overlay">
   <div id="p1" class="page active">
-    <h1>[ INITIALIZING ]</h1>
-    <button class="pop-btn" onclick="goPage('p-warn')">START LEARNING</button>
+    <h1>WELCOME TO CUBEZILLA</h1>
+    <p>Interactive Rubik’s Cube Training System</p>
+    <button class="pop-btn" onclick="goPage('p-warn')">START</button>
   </div>
+
   <div id="p-warn" class="page">
-    <h1 style="color:#ff3333">⚠ BEWARE ⚠</h1>
-    <div class="warning-red">PATIENCE IS REQUIRED</div>
-    <p>Mastering the cube takes hours of practice.</p>
-    <button class="pop-btn" onclick="goPage('p-method')">I HAVE PATIENCE</button>
+    <h1 style="color:#ff3333">⚠ WARNING ⚠</h1>
+    <div class="warning-red">THIS TAKES PRACTICE</div>
+    <p>No instant solving. Muscle memory required.</p>
+    <button class="pop-btn" onclick="goPage('p-method')">CONTINUE</button>
   </div>
+
   <div id="p-method" class="page">
     <h1>SELECT METHOD</h1>
-    <p><b>CFOP:</b> Fast, hard.</p>
-    <button class="pop-btn" onclick="initApp('CFOP')">CHOOSE CFOP</button>
+    <p><b>CFOP</b> – Advanced</p>
+    <button class="pop-btn" onclick="initApp('CFOP')">CFOP</button>
     <hr style="border-color:var(--neon)">
-    <p><b>BEGINNER:</b> Simple.</p>
-    <button class="pop-btn" onclick="initApp('Beginner')">CHOOSE BEGINNER</button>
+    <p><b>BEGINNER</b> – Layer by layer</p>
+    <button class="pop-btn" onclick="initApp('Beginner')">BEGINNER</button>
   </div>
 </div>
 
@@ -47,9 +90,9 @@ html,body{margin:0;width:100%;height:100%;background:#000;color:var(--neon);font
   <div id="sidebar">
     <h2 id="method-title">SYSTEM</h2>
     <div class="lesson-box">
-      <h3>Lesson 1: Notation</h3>
-      <p>Drag background to rotate.</p>
-      <p>Drag face to turn.</p>
+      <h3>Lesson 1</h3>
+      <p>Drag background → rotate view</p>
+      <p>Drag a face → rotate layer</p>
     </div>
     <button class="pop-btn" style="margin-top:auto" onclick="scramble()">SCRAMBLE</button>
   </div>
@@ -62,13 +105,13 @@ function goPage(id){
   document.getElementById(id).classList.add('active');
 }
 function initApp(method){
-  overlay.style.display='none';
+  document.getElementById('overlay').style.display='none';
   document.getElementById('main-app').style.display='grid';
   document.getElementById('method-title').innerText=method+' HUB';
   initCube();
 }
 
-/* ======== CUBE ONLY (REPLACED) ======== */
+/* ===== CUBE (FIXED AXES + VISIBILITY) ===== */
 let scene,camera,renderer,cubeGroup;
 let cubies=[],raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
 let dragStart=null,picked=null,normal=null,rotating=false;
@@ -77,6 +120,7 @@ let camRot={x:0,y:0};
 function initCube(){
   const c=document.getElementById('cube-container');
   scene=new THREE.Scene();
+
   camera=new THREE.PerspectiveCamera(45,c.clientWidth/c.clientHeight,.1,100);
   camera.position.set(6,6,6);
   camera.lookAt(0,0,0);
@@ -85,12 +129,14 @@ function initCube(){
   renderer.setSize(c.clientWidth,c.clientHeight);
   c.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff,.8));
-  const d=new THREE.DirectionalLight(0xffffff,.5);
-  d.position.set(5,10,7);scene.add(d);
+  scene.add(new THREE.AmbientLight(0xffffff,.9));
+  const d=new THREE.DirectionalLight(0xffffff,.6);
+  d.position.set(5,10,7);
+  scene.add(d);
 
   cubeGroup=new THREE.Group();
   scene.add(cubeGroup);
+
   buildCube();
 
   c.addEventListener('pointerdown',onDown);
@@ -101,19 +147,20 @@ function initCube(){
 
 function buildCube(){
   cubies=[];cubeGroup.clear();
-  const cols=[0xff0000,0xff8000,0xffffff,0xffff00,0x00ff00,0x0000ff];
+  const C=[0xff0000,0xff8000,0xffffff,0xffff00,0x00ff00,0x0000ff];
   for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){
-    const mats=[
-      new THREE.MeshLambertMaterial({color:x==1?cols[0]:0}),
-      new THREE.MeshLambertMaterial({color:x==-1?cols[1]:0}),
-      new THREE.MeshLambertMaterial({color:y==1?cols[2]:0}),
-      new THREE.MeshLambertMaterial({color:y==-1?cols[3]:0}),
-      new THREE.MeshLambertMaterial({color:z==1?cols[4]:0}),
-      new THREE.MeshLambertMaterial({color:z==-1?cols[5]:0}),
+    const m=[
+      new THREE.MeshLambertMaterial({color:x==1?C[0]:0x111111}),
+      new THREE.MeshLambertMaterial({color:x==-1?C[1]:0x111111}),
+      new THREE.MeshLambertMaterial({color:y==1?C[2]:0x111111}),
+      new THREE.MeshLambertMaterial({color:y==-1?C[3]:0x111111}),
+      new THREE.MeshLambertMaterial({color:z==1?C[4]:0x111111}),
+      new THREE.MeshLambertMaterial({color:z==-1?C[5]:0x111111}),
     ];
-    const m=new THREE.Mesh(new THREE.BoxGeometry(.95,.95,.95),mats);
-    m.position.set(x,y,z);
-    cubies.push(m);cubeGroup.add(m);
+    const cube=new THREE.Mesh(new THREE.BoxGeometry(.95,.95,.95),m);
+    cube.position.set(x,y,z);
+    cubies.push(cube);
+    cubeGroup.add(cube);
   }
 }
 
@@ -132,26 +179,30 @@ function onUp(e){
   const dx=e.clientX-dragStart.x;
   const dy=e.clientY-dragStart.y;
   if(!picked){
-    camRot.y+=dx*.005;camRot.x+=dy*.005;
+    camRot.y+=dx*.005;
+    camRot.x+=dy*.005;
     cubeGroup.rotation.set(camRot.x,camRot.y,0);
   }else if(!rotating){
-    turn(picked,normal,dx,dy);
+    rotateFace(picked,normal,dx,dy);
   }
   dragStart=null;picked=null;
 }
 
-function turn(c,n,dx,dy){
+function rotateFace(c,n,dx,dy){
   rotating=true;
-  let axis,layer,dir=(Math.abs(dx)>Math.abs(dy)?dx:dy)>0?1:-1;
-  if(Math.abs(n.x)==1){axis='x';layer=c.position.x}
-  else if(Math.abs(n.y)==1){axis='y';layer=c.position.y}
-  else{axis='z';layer=c.position.z}
+  let axis,layer;
+  const dir=(Math.abs(dx)>Math.abs(dy)?dx:dy)>0?1:-1;
 
-  const pivot=new THREE.Group();scene.add(pivot);
+  if(Math.abs(n.x)==1){axis='x';layer=c.position.x;}
+  else if(Math.abs(n.y)==1){axis='y';layer=c.position.y;}
+  else{axis='z';layer=c.position.z;}
+
+  const pivot=new THREE.Group();
+  scene.add(pivot);
   const moving=cubies.filter(o=>Math.abs(o.position[axis]-layer)<.1);
   moving.forEach(o=>pivot.attach(o));
-  const start=performance.now();
 
+  const start=performance.now();
   (function anim(){
     const t=Math.min((performance.now()-start)/200,1);
     pivot.rotation[axis]=dir*Math.PI/2*t;
@@ -159,27 +210,34 @@ function turn(c,n,dx,dy){
     else{
       moving.forEach(o=>{
         cubeGroup.attach(o);
-        o.position.set(Math.round(o.position.x),Math.round(o.position.y),Math.round(o.position.z));
+        o.position.set(
+          Math.round(o.position.x),
+          Math.round(o.position.y),
+          Math.round(o.position.z)
+        );
         o.rotation.set(
           Math.round(o.rotation.x/(Math.PI/2))*(Math.PI/2),
           Math.round(o.rotation.y/(Math.PI/2))*(Math.PI/2),
           Math.round(o.rotation.z/(Math.PI/2))*(Math.PI/2)
         );
       });
-      scene.remove(pivot);rotating=false;
+      scene.remove(pivot);
+      rotating=false;
     }
   })();
 }
 
 function scramble(){
   if(rotating)return;
-  let i=0,axes=['x','y','z'];
+  let i=0;
+  const axes=['x','y','z'];
   const s=setInterval(()=>{
     const a=axes[Math.floor(Math.random()*3)];
     const l=[-1,0,1][Math.floor(Math.random()*3)];
-    turn(cubies.find(o=>o.position[a]==l),{x:a=='x',y:a=='y',z:a=='z'},1,0);
-    if(++i>10)clearInterval(s);
-  },300);
+    const c=cubies.find(o=>o.position[a]==l);
+    rotateFace(c,{x:a=='x',y:a=='y',z:a=='z'},1,0);
+    if(++i>12)clearInterval(s);
+  },250);
 }
 
 function animate(){
