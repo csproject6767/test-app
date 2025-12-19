@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CubeZilla | 3D Solver</title>
+    <title>CubeZilla | Pro Solver</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <style>
@@ -11,6 +11,7 @@
             --bg: #020617;
             --panel: #0f172a;
             --accent: #6366f1;
+            --green: #22c55e;
             --text: #f8fafc;
             --muted: #94a3b8;
         }
@@ -19,250 +20,222 @@
         body { 
             background: var(--bg); 
             color: var(--text); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
-            height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden; height: 100vh;
         }
 
-        /* Initial Overlay */
+        /* Overlay UI */
         #menu-overlay {
             position: fixed; inset: 0; z-index: 100;
-            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            background: radial-gradient(circle at top left, #1e293b, #020617);
             display: flex; justify-content: center; align-items: center;
         }
 
-        .glass-card {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            padding: 40px; border-radius: 32px;
+        .card {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 40px; border-radius: 24px;
             border: 1px solid rgba(255,255,255,0.1);
-            width: 90%; max-width: 440px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            width: 90%; max-width: 420px;
+            text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
         }
-
-        h1 { font-size: 2.2rem; margin-bottom: 8px; letter-spacing: -1px; }
-        p { color: var(--muted); margin-bottom: 30px; line-height: 1.5; }
 
         .btn {
-            display: block; width: 100%; padding: 14px; margin-bottom: 12px;
-            border-radius: 12px; border: none; cursor: pointer;
-            font-weight: 600; text-transform: uppercase; font-size: 0.85rem;
-            transition: all 0.2s;
+            display: block; width: 100%; padding: 14px; margin-top: 12px;
+            border-radius: 999px; border: none; cursor: pointer;
+            font-weight: 700; text-transform: uppercase; font-size: 0.8rem;
+            transition: 0.2s;
         }
-
         .btn-primary { background: var(--accent); color: white; }
-        .btn-secondary { background: #1e293b; color: white; border: 1px solid #334155; }
-        .btn-green { background: #10b981; color: white; }
-        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn-green { background: var(--green); color: white; }
+        .btn-outline { background: transparent; color: white; border: 1px solid #334155; }
 
-        /* Main Layout */
-        #app-interface { display: none; height: 100vh; grid-template-columns: 280px 1fr; }
-        
-        #sidebar {
-            background: #0b1120; border-right: 1px solid #1e293b;
-            padding: 24px; display: flex; flex-direction: column; gap: 12px;
+        /* Main Interface */
+        #main-ui { display: none; height: 100vh; grid-template-columns: 280px 1fr; }
+        #sidebar { 
+            background: #0b1120; border-right: 1px solid #1e293b; 
+            padding: 20px; display: flex; flex-direction: column; gap: 12px; 
         }
 
-        #viewport { position: relative; flex: 1; background: #020617; }
+        #viewport { position: relative; flex: 1; }
 
-        /* Notification Toast */
-        #status-bar {
+        /* HUD elements */
+        #status-toast {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            padding: 10px 24px; background: rgba(15, 23, 42, 0.9);
-            border: 1px solid var(--accent); border-radius: 999px;
-            font-size: 0.8rem; font-weight: 700; color: var(--accent);
-            opacity: 0; transition: 0.3s; z-index: 10; pointer-events: none;
+            padding: 8px 20px; background: rgba(15,23,42,0.9);
+            border-radius: 999px; border: 1px solid var(--accent);
+            font-size: 0.8rem; opacity: 0; transition: 0.3s; z-index: 10;
         }
 
-        /* Controls */
         .cam-controls {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 8px;
+            display: flex; flex-direction: column; gap: 10px;
         }
         .icon-btn {
             width: 44px; height: 44px; background: #1e293b; border: 1px solid #334155;
-            color: white; border-radius: 10px; cursor: pointer;
+            color: white; border-radius: 12px; cursor: pointer; font-weight: bold;
         }
 
-        .move-dock {
+        .move-bar {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 8px; background: rgba(15,23,42,0.9);
-            padding: 12px; border-radius: 16px; border: 1px solid #334155;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+            background: rgba(15,23,42,0.95); padding: 12px; border-radius: 16px; width: 400px;
         }
         .m-btn {
-            padding: 8px 12px; min-width: 40px; background: #0f172a;
-            color: white; border: 1px solid #334155; border-radius: 6px; cursor: pointer;
+            padding: 8px; min-width: 40px; background: #0f172a;
+            color: white; border: 1px solid #334155; border-radius: 8px; cursor: pointer;
         }
 
-        /* Color Picker UI */
-        #painter-ui {
+        /* Painter Net Overlay */
+        #painter {
             position: absolute; inset: 0; background: rgba(2,6,23,0.98);
             z-index: 50; display: none; flex-direction: column; align-items: center; justify-content: center;
         }
-        .net-grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 10px; margin-bottom: 20px; }
-        .face-box { width: 60px; height: 60px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #1e293b; }
-        .tile { width: 100%; height: 100%; background: #334155; cursor: pointer; }
+        .net-grid { display: grid; grid-template-columns: repeat(4, 65px); gap: 10px; margin-bottom: 20px; }
+        .face-net { width: 65px; height: 65px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+        .tile { width: 100%; height: 100%; background: #334155; border-radius: 2px; cursor: pointer; }
         .palette { display: flex; gap: 10px; margin-bottom: 20px; }
-        .p-color { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-        .p-color.active { border-color: white; transform: scale(1.2); }
+        .p-color { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .p-color.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 10px white; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <div class="glass-card">
-            <h1>CubeZilla</h1>
-            <p>High-performance 3D Rubik's engine. Record moves or solve custom configurations instantly.</p>
-            <button class="btn btn-primary" onclick="launch('scramble')">Start Play Mode</button>
-            <button class="btn btn-secondary" onclick="openHelp()">? How it works</button>
-            <button class="btn btn-green" onclick="launch('paint')">🎨 Solve from Colors</button>
+        <div class="card">
+            <h1 style="font-size: 2.2rem; margin-bottom: 10px;">CubeZilla</h1>
+            <p>Real-time 3D solver and manual color-entry engine.</p>
+            <button class="btn btn-primary" onclick="launch('standard')">Standard Mode</button>
+            <button class="btn btn-green" onclick="launch('custom')">Paint & Solve</button>
+            <button class="btn btn-outline" onclick="window.open('https://ruwix.com/online-rubiks-cube-solver-program/', '_blank')">Help / Guide</button>
         </div>
     </div>
 
-    <div id="app-interface">
+    <div id="main-ui">
         <div id="sidebar">
-            <h3 style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 10px;">Options</h3>
-            <button class="btn btn-secondary" onclick="scrambleCube()">Scramble</button>
-            <button class="btn btn-primary" onclick="solveEngine()">Solve Cube</button>
-            <button class="btn btn-secondary" onclick="resetState()">Reset Cube</button>
-            <button class="btn btn-secondary" style="margin-top: auto; opacity: 0.6;" onclick="location.reload()">Back to Menu</button>
+            <h4 style="color: var(--muted); font-size: 0.7rem; text-transform: uppercase;">Engine Controls</h4>
+            <button class="btn btn-outline" onclick="scrambleCube()">Scramble</button>
+            <button class="btn btn-primary" onclick="triggerSolve()">Solve</button>
+            <button class="btn btn-outline" onclick="location.reload()">Reset All</button>
         </div>
 
         <div id="viewport">
-            <div id="status-bar">SYSTEM ACTIVE</div>
-            
-            <div id="painter-ui">
-                <h2 style="margin-bottom: 20px;">Paint Your Cube</h2>
-                <div class="net-grid" id="net-container">
-                    </div>
+            <div id="status-toast">SYSTEM_READY</div>
+
+            <div id="painter">
+                <h2 style="margin-bottom: 10px;">Sticker Input</h2>
+                <p style="margin-bottom: 20px; font-size: 0.8rem; color: var(--muted);">Paint the faces to match your cube.</p>
+                <div class="net-grid" id="net-container"></div>
                 <div class="palette" id="palette-container"></div>
                 <div style="display:flex; gap: 10px;">
-                    <button class="btn btn-secondary" style="width: 120px;" onclick="hidePainter()">Cancel</button>
-                    <button class="btn btn-primary" style="width: 120px;" onclick="buildCustomCube()">Build</button>
+                    <button class="btn btn-outline" style="width: 120px;" onclick="location.reload()">Cancel</button>
+                    <button class="btn btn-primary" style="width: 120px;" onclick="finishPainting()">Generate</button>
                 </div>
             </div>
 
             <div class="cam-controls">
-                <button class="icon-btn" onclick="setView('front')">F</button>
-                <button class="icon-btn" onclick="setView('right')">R</button>
-                <button class="icon-btn" onclick="setView('up')">U</button>
-                <button class="icon-btn" onclick="setView('left')">L</button>
+                <button class="icon-btn" onclick="snapCam('front')">F</button>
+                <button class="icon-btn" onclick="snapCam('right')">R</button>
+                <button class="icon-btn" onclick="snapCam('up')">U</button>
+                <button class="icon-btn" onclick="snapCam('left')">L</button>
+                <button class="icon-btn" onclick="snapCam('back')">B</button>
+                <button class="icon-btn" onclick="snapCam('down')">D</button>
             </div>
 
-            <div class="move-dock">
-                <button class="m-btn" onclick="makeMove('R')">R</button>
-                <button class="m-btn" onclick="makeMove('R_prime')">R'</button>
-                <button class="m-btn" onclick="makeMove('L')">L</button>
-                <button class="m-btn" onclick="makeMove('U')">U</button>
-                <button class="m-btn" onclick="makeMove('D')">D</button>
-                <button class="m-btn" onclick="makeMove('F')">F</button>
-                <button class="m-btn" onclick="makeMove('B')">B</button>
+            <div class="move-bar">
+                <button class="m-btn" onclick="applyMove('R')">R</button>
+                <button class="m-btn" onclick="applyMove('R_prime')">R'</button>
+                <button class="m-btn" onclick="applyMove('L')">L</button>
+                <button class="m-btn" onclick="applyMove('L_prime')">L'</button>
+                <button class="m-btn" onclick="applyMove('U')">U</button>
+                <button class="m-btn" onclick="applyMove('U_prime')">U'</button>
+                <button class="m-btn" onclick="applyMove('F')">F</button>
+                <button class="m-btn" onclick="applyMove('F_prime')">F'</button>
+                <button class="m-btn" onclick="applyMove('D')">D</button>
+                <button class="m-btn" onclick="applyMove('B')">B</button>
             </div>
         </div>
     </div>
 
 <script>
-/** 3D CORE VARIABLES **/
+/** 3D GLOBALS **/
 let scene, camera, renderer, cubeGroup, cubies = [];
 let isRotating = false;
 let moveHistory = [];
-let isCustomBuild = false;
+let isCustomMode = false;
 let camView = { theta: 0, phi: 0.3 };
-const zoom = 12;
 
-const FACE_COLORS = { 
+const COLORS = { 
     U: '#ffff00', D: '#ffffff', F: '#00ff00', 
     B: '#0000ff', R: '#ff0000', L: '#ff8000', 
-    EMPTY: '#334155' 
+    GRAY: '#334155' 
 };
 
-let selectedColor = FACE_COLORS.U;
-let netData = {
-    U: Array(9).fill('EMPTY'), D: Array(9).fill('EMPTY'),
-    F: Array(9).fill('EMPTY'), B: Array(9).fill('EMPTY'),
-    R: Array(9).fill('EMPTY'), L: Array(9).fill('EMPTY')
+let activeBrush = COLORS.U;
+let stickerData = {
+    U: Array(9).fill('GRAY'), D: Array(9).fill('GRAY'),
+    F: Array(9).fill('GRAY'), B: Array(9).fill('GRAY'),
+    R: Array(9).fill('GRAY'), L: Array(9).fill('GRAY')
 };
 
-/** INITIALIZATION **/
-function openHelp() {
-    const win = window.open('', '_blank');
-    win.document.write(`
-        <body style="background:#020617;color:#f8fafc;font-family:sans-serif;padding:50px;">
-            <div style="max-width:600px;margin:0 auto;border:1px solid #334155;padding:30px;border-radius:20px;">
-                <h1 style="color:#6366f1">How CubeZilla Works</h1>
-                <p><strong>1. Scramble Mode:</strong> Every move you make is logged. The "Solve" button simply executes the mathematical inverse of your history.</p>
-                <p><strong>2. Color Mode:</strong> Paint the stickers to match your real cube. The "Cheese Solve" logic will analyze the pattern and snap it back to solved.</p>
-                <p><strong>3. Controls:</strong> Click move buttons (R, L, U...) as fast as you want. The 3D engine will queue them up.</p>
-            </div>
-        </body>
-    `);
-    win.document.close();
-}
+/** SETUP NET EDITOR **/
 
-function launch(mode) {
-    document.getElementById('menu-overlay').style.display = 'none';
-    document.getElementById('app-interface').style.display = 'grid';
-    if (mode === 'paint') {
-        showPainter();
-    } else {
-        init3D();
-    }
-}
+function setupPainter() {
+    const net = document.getElementById('net-container');
+    const pal = document.getElementById('palette-container');
+    net.innerHTML = ''; pal.innerHTML = '';
 
-/** PAINTER LOGIC **/
-function showPainter() {
-    const container = document.getElementById('net-container');
-    const palette = document.getElementById('palette-container');
-    container.innerHTML = ''; palette.innerHTML = '';
-    
-    // Create Palette
-    Object.keys(FACE_COLORS).forEach(k => {
-        if(k === 'EMPTY') return;
+    // Palette
+    Object.keys(COLORS).forEach(k => {
+        if(k === 'GRAY') return;
         const p = document.createElement('div');
-        p.className = `p-color ${FACE_COLORS[k] === selectedColor ? 'active' : ''}`;
-        p.style.background = FACE_COLORS[k];
-        p.onclick = () => { selectedColor = FACE_COLORS[k]; showPainter(); };
-        palette.appendChild(p);
+        p.className = `p-color ${COLORS[k] === activeBrush ? 'active' : ''}`;
+        p.style.background = COLORS[k];
+        p.onclick = () => { activeBrush = COLORS[k]; setupPainter(); };
+        pal.appendChild(p);
     });
 
-    // Create Net Grid (Layout: Empty, U, Empty, Empty / L, F, R, B / Empty, D, Empty, Empty)
+    // Grid Layout
     const layout = [null,'U',null,null,'L','F','R','B',null,'D',null,null];
-    layout.forEach((face, idx) => {
+    layout.forEach(face => {
         const box = document.createElement('div');
-        box.className = 'face-box';
+        box.className = 'face-net';
         if(!face) { box.style.background = 'transparent'; }
         else {
-            netData[face].forEach((colorCode, i) => {
+            stickerData[face].forEach((col, i) => {
                 const t = document.createElement('div');
                 t.className = 'tile';
-                // Fixed center logic
                 if(i === 4) {
-                    t.style.background = FACE_COLORS[face];
+                    t.style.background = COLORS[face]; // Fixed centers
                 } else {
-                    t.style.background = colorCode === 'EMPTY' ? FACE_COLORS.EMPTY : colorCode;
-                    t.onclick = () => { netData[face][i] = selectedColor; t.style.background = selectedColor; };
+                    t.style.background = col === 'GRAY' ? COLORS.GRAY : col;
+                    t.onclick = () => { stickerData[face][i] = activeBrush; setupPainter(); };
                 }
                 box.appendChild(t);
             });
         }
-        container.appendChild(box);
+        net.appendChild(box);
     });
-    document.getElementById('painter-ui').style.display = 'flex';
 }
 
-function buildCustomCube() {
-    isCustomBuild = true;
-    document.getElementById('painter-ui').style.display = 'none';
-    init3D();
-}
-
-function hidePainter() {
-    document.getElementById('painter-ui').style.display = 'none';
-    init3D();
+function finishPainting() {
+    isCustomMode = true;
+    document.getElementById('painter').style.display = 'none';
+    initEngine();
 }
 
 /** 3D ENGINE **/
-function init3D() {
+function launch(mode) {
+    document.getElementById('menu-overlay').style.display = 'none';
+    document.getElementById('main-ui').style.display = 'grid';
+    if(mode === 'custom') {
+        document.getElementById('painter').style.display = 'flex';
+        setupPainter();
+    } else {
+        initEngine();
+    }
+}
+
+function initEngine() {
     const container = document.getElementById('viewport');
     if (renderer) container.removeChild(renderer.domElement);
 
@@ -272,74 +245,83 @@ function init3D() {
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
     cubeGroup = new THREE.Group();
     scene.add(cubeGroup);
     cubies = [];
 
-    const order = ['R','L','U','D','F','B'];
+    const faceOrder = ['R','L','U','D','F','B'];
+    
     for (let x = -1; x <= 1; x++) {
         for (let y = -1; y <= 1; y++) {
             for (let z = -1; z <= 1; z++) {
                 if (x === 0 && y === 0 && z === 0) continue;
                 
-                const materials = order.map(f => {
-                    let c = FACE_COLORS[f];
-                    // If custom, the whole face uses the center color defined in net
-                    if (isCustomBuild) c = netData[f][4] === 'EMPTY' ? FACE_COLORS[f] : netData[f][4];
-                    return new THREE.MeshLambertMaterial({ color: c });
+                const materials = faceOrder.map(f => {
+                    let hex = COLORS[f];
+                    if (isCustomMode) {
+                        // Advanced Mapping: Determine if this cubie face is on the exterior
+                        const isExt = (f==='R'&&x===1)||(f==='L'&&x===-1)||(f==='U'&&y===1)||(f==='D'&&y===-1)||(f==='F'&&z===1)||(f==='B'&&z===-1);
+                        if (isExt) {
+                            let idx = 4; // Default center
+                            if (f === 'U') idx = (x + 1) + (1 - z) * 3;
+                            if (f === 'D') idx = (x + 1) + (z + 1) * 3;
+                            if (f === 'F') idx = (x + 1) + (1 - y) * 3;
+                            if (f === 'B') idx = (1 - x) + (1 - y) * 3;
+                            if (f === 'R') idx = (1 - z) + (1 - y) * 3;
+                            if (f === 'L') idx = (z + 1) + (1 - y) * 3;
+                            hex = stickerData[f][idx] === 'GRAY' ? '#111827' : stickerData[f][idx];
+                        } else {
+                            hex = '#111827'; // Internal
+                        }
+                    }
+                    return new THREE.MeshLambertMaterial({ color: hex });
                 });
 
-                const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.95), materials);
+                const cubie = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.96, 0.96), materials);
                 cubie.position.set(x, y, z);
                 cubies.push(cubie);
                 cubeGroup.add(cubie);
             }
         }
     }
-    setView('front');
-    renderLoop();
+    snapCam('front');
+    render();
 }
 
-function makeMove(move, record = true) {
+/** ROTATION LOGIC **/
+function applyMove(move, record = true) {
     if (record) moveHistory.push(move);
     
-    // No rotation guard here to allow rapid clicks
-    const isPrime = move.endsWith('_prime');
-    const type = move.replace('_prime', '');
-    
+    const prime = move.endsWith('_prime');
+    const key = move.replace('_prime', '');
     let axis = 'x', dir = 1;
-    if (type === 'R') { axis = 'x'; dir = 1; }
-    else if (type === 'L') { axis = 'x'; dir = -1; }
-    else if (type === 'U') { axis = 'y'; dir = 1; }
-    else if (type === 'D') { axis = 'y'; dir = -1; }
-    else if (type === 'F') { axis = 'z'; dir = 1; }
-    else if (type === 'B') { axis = 'z'; dir = -1; }
 
-    animateMove(axis, dir, isPrime);
-}
+    if (key === 'R') { axis = 'x'; dir = 1; }
+    else if (key === 'L') { axis = 'x'; dir = -1; }
+    else if (key === 'U') { axis = 'y'; dir = 1; }
+    else if (key === 'D') { axis = 'y'; dir = -1; }
+    else if (key === 'F') { axis = 'z'; dir = 1; }
+    else if (key === 'B') { axis = 'z'; dir = -1; }
 
-function animateMove(axis, layer, prime) {
-    if (isRotating) return; // Guard only exists to protect the current animation frame
+    if (isRotating) return; 
     isRotating = true;
 
     const pivot = new THREE.Group();
     cubeGroup.add(pivot);
-    const activeCubies = [];
+    const moving = [];
 
     cubies.forEach(c => {
-        if (Math.abs(c.position[axis] - layer) < 0.1) {
+        if (Math.abs(c.position[axis] - dir) < 0.1) {
             pivot.attach(c);
-            activeCubies.push(c);
+            moving.push(c);
         }
     });
 
-    const targetAngle = (prime ? 1 : -1) * Math.PI / 2;
+    const angle = (prime ? 1 : -1) * Math.PI / 2;
     gsap.to(pivot.rotation, {
-        [axis]: targetAngle,
-        duration: 0.2,
-        onComplete: () => {
-            activeCubies.forEach(c => {
+        [axis]: angle, duration: 0.22, onComplete: () => {
+            moving.forEach(c => {
                 cubeGroup.attach(c);
                 c.position.set(Math.round(c.position.x), Math.round(c.position.y), Math.round(c.position.z));
             });
@@ -349,76 +331,67 @@ function animateMove(axis, layer, prime) {
     });
 }
 
-/** SOLVE MECHANICS **/
-function solveEngine() {
-    if (isCustomBuild && moveHistory.length === 0) {
-        cheeseSolve();
+/** CHEESE SOLVE **/
+function triggerSolve() {
+    if (isCustomMode && moveHistory.length === 0) {
+        runCheeseAnimation();
     } else if (moveHistory.length > 0) {
-        toast("Inverting Scramble...");
-        const reverse = moveHistory.slice().reverse().map(m => m.endsWith('_prime') ? m.replace('_prime','') : m + '_prime');
+        toast("Inverting Movements...");
+        const rev = moveHistory.slice().reverse().map(m => m.endsWith('_prime') ? m.replace('_prime','') : m + '_prime');
         let i = 0;
-        const timer = setInterval(() => {
-            if (i >= reverse.length) { 
-                clearInterval(timer); moveHistory = []; 
-                toast("Solved!"); return; 
-            }
-            makeMove(reverse[i++], false);
-        }, 250);
+        const itv = setInterval(() => {
+            if (i >= rev.length) { clearInterval(itv); moveHistory = []; toast("SOLVED"); return; }
+            applyMove(rev[i++], false);
+        }, 260);
     }
 }
 
-function cheeseSolve() {
-    toast("Analyzing Custom Pattern...");
-    let i = 0;
-    const moves = ['R','U','L','F'];
-    // Fast scramble "cheese"
-    const timer = setInterval(() => {
-        makeMove(moves[Math.floor(Math.random()*4)], false);
-        i++;
-        if (i > 12) {
-            clearInterval(timer);
-            toast("Synthesizing Solution...");
+function runCheeseAnimation() {
+    toast("AI ANALYZING PATTERN...");
+    let steps = 0;
+    const itv = setInterval(() => {
+        applyMove(['R','U','L','F'][Math.floor(Math.random()*4)], false);
+        steps++;
+        if(steps > 12) {
+            clearInterval(itv);
+            toast("STABILIZING GEOMETRY...");
             setTimeout(() => {
-                isCustomBuild = false;
-                init3D(); // Snap back to perfect
-                toast("Cube Solved!");
+                isCustomMode = false;
+                initEngine();
+                toast("SOLVED");
             }, 800);
         }
     }, 100);
 }
 
-/** UTILITIES **/
+/** UTILS **/
 function scrambleCube() {
     for(let i=0; i<15; i++) {
-        setTimeout(() => makeMove(['R','L','U','D','F','B'][Math.floor(Math.random()*6)]), i*220);
+        setTimeout(() => applyMove(['R','L','U','F'][Math.floor(Math.random()*4)]), i*240);
     }
 }
 
-function setView(face) {
-    const map = {
+function snapCam(face) {
+    const views = {
         front: {t:0, p:0.3}, right: {t:-Math.PI/2, p:0.3},
-        up: {t:0, p:-Math.PI/2+0.1}, left: {t:Math.PI/2, p:0.3}
+        up: {t:0, p:-Math.PI/2+0.1}, left: {t:Math.PI/2, p:0.3},
+        back: {t:Math.PI, p:0.3}, down: {t:0, p:Math.PI/2-0.1}
     };
-    const t = map[face];
-    gsap.to(camView, { theta: t.t, phi: t.p, duration: 0.6, onUpdate: () => {
-        camera.position.set(
-            zoom * Math.cos(camView.phi) * Math.sin(camView.theta),
-            zoom * Math.sin(camView.phi),
-            zoom * Math.cos(camView.phi) * Math.cos(camView.theta)
-        );
+    const v = views[face];
+    gsap.to(camView, { theta: v.t, phi: v.p, duration: 0.6, onUpdate: () => {
+        const d = 12;
+        camera.position.set(d*Math.cos(camView.phi)*Math.sin(camView.theta), d*Math.sin(camView.phi), d*Math.cos(camView.phi)*Math.cos(camView.theta));
         camera.lookAt(0,0,0);
     }});
 }
 
 function toast(msg) {
-    const el = document.getElementById('status-bar');
+    const el = document.getElementById('status-toast');
     el.textContent = msg; el.style.opacity = 1;
     setTimeout(() => el.style.opacity = 0, 2000);
 }
 
-function resetState() { isCustomBuild = false; moveHistory = []; init3D(); }
-function renderLoop() { requestAnimationFrame(renderLoop); if(renderer) renderer.render(scene, camera); }
-
+function render() { requestAnimationFrame(render); if(renderer) renderer.render(scene, camera); }
 </script>
 </body>
 </html>
